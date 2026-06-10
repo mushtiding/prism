@@ -1,15 +1,20 @@
 import type { PersonaId, StanceLabel } from "@prism/shared";
 
-/** Grayscale value + short glyph per persona (encoding is value, never hue). */
+/**
+ * Per-persona identity: a signature color, a short glyph, a label, and a little
+ * character name. Colors mark IDENTITY (which lens), never stance direction —
+ * and deliberately avoid the green/red reserved for factual up/down moves, so
+ * the two color systems never get confused.
+ */
 export const PERSONA_STYLE: Record<
   PersonaId,
-  { color: string; glyph: string; short: string }
+  { color: string; glyph: string; short: string; charName: string }
 > = {
-  momentum: { color: "var(--p-momentum)", glyph: "MO", short: "Momentum" },
-  growth: { color: "var(--p-growth)", glyph: "GR", short: "Growth" },
-  value: { color: "var(--p-value)", glyph: "VA", short: "Value" },
-  macro: { color: "var(--p-macro)", glyph: "MA", short: "Macro" },
-  contrarian: { color: "var(--p-contrarian)", glyph: "CO", short: "Contrarian" },
+  momentum: { color: "#f5a524", glyph: "MO", short: "Momentum", charName: "Blitz" },
+  growth: { color: "#e8d44d", glyph: "GR", short: "Growth", charName: "Sprout" },
+  value: { color: "#8a8fff", glyph: "VA", short: "Value", charName: "Penny" },
+  macro: { color: "#4cc2e0", glyph: "MA", short: "Macro", charName: "Sage" },
+  contrarian: { color: "#e26fd0", glyph: "CO", short: "Contrarian", charName: "Nix" },
 };
 
 /** Map a conviction score (-2..+2) to a 0..1 position on the bear→bull axis. */

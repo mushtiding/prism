@@ -1,63 +1,56 @@
 import type { PersonaId } from "@prism/shared";
+import { PERSONA_STYLE } from "./personaStyle";
 
 // Tamagotchi-style pixel creatures, one per persona. Each is a 12x12 grid with
 // two frames — a normal pose and a "squeezed" (squashed) pose — that alternate
-// for a little idle bounce. They share a round body + two-pupil face so they
-// read as a family, but each has an unmistakable silhouette:
-//   momentum  — a forward speed-horn (always leaning into the move)
-//   growth    — a two-leaf sprout (the long compounding story)
-//   value     — flat sturdy head, hugging a coin (margin of safety)
-//   macro     — twin radar antennae (scanning for what breaks next)
-//   contrarian— a back cowlick + gaze turned away (facing the other way)
+// for an idle bounce. They share a round body + two-pupil face so they read as
+// a family, but each has a name, a signature color, and an accessory:
+//   Blitz  (momentum)  — sunglasses (cool, chasing the move)
+//   Sprout (growth)    — tidy bowtie + a leaf (neat, long-term optimist)
+//   Penny  (value)     — big nerdy glasses, hugging a coin (margin of safety)
+//   Sage   (macro)     — monk-like hood (calm, watching what breaks)
+//   Nix    (contrarian)— a beanie, gaze turned away (faces the other way)
 //
-// Pixel legend (resolved to per-persona hex in PAL below):
-//   .  transparent   B  body   b  shade (feet/antennae)   F  accent (leaf/coin)
-//   W  eye highlight  D  pupil
-export type PetLegend = "." | "B" | "b" | "F" | "W" | "D";
-
-export interface PetPalette {
-  B: string;
-  b: string;
-  F: string;
-  W: string;
-  D: string;
-}
+// Pixel legend (resolved to per-persona hex in PixelPet.tsx):
+//   .  transparent   B  body (signature color)   b  body shade
+//   A  accessory     a  accessory shade           F  accent (leaf/coin)
+//   W  eye white      D  pupil
+export type PetLegend = "." | "B" | "b" | "A" | "a" | "F" | "W" | "D";
 
 export interface PixelPet {
   /** [normalFrame, squeezedFrame], each 12 rows x 12 chars. */
   frames: [string[], string[]];
-  palette: PetPalette;
 }
 
-// Each frame is hand-authored so the characters stay distinct. Every row is
-// exactly 12 characters wide; body is centered on columns 2–9.
+// Each frame is hand-authored (every row exactly 12 chars). Body centered on
+// columns 2–9; accessories drawn over the face/head per character.
 
-const MOMENTUM: [string[], string[]] = [
-  // normal — speed-horn sweeping forward (right)
+const BLITZ: [string[], string[]] = [
+  // normal — sunglasses across the eyes
   [
     "............",
-    ".......BBB..",
-    "......BBB...",
-    "...BBBBB....",
+    "............",
+    "...BBBBBB...",
     "..BBBBBBBB..",
-    "..BDBBBBDB..",
     "..BBBBBBBB..",
-    "..BBBWWBBB..",
+    "..AAAAAAAA..",
+    "..ADAAAADA..",
+    "..BBBBBBBB..",
     "..BBBBBBBB..",
     "...BBBBBB...",
     "...b....b...",
     "............",
   ],
-  // squeezed — horn drops, body squashes wide
+  // squeezed
   [
     "............",
     "............",
-    "......BBB...",
-    ".....BBB....",
+    "............",
+    "...BBBBBB...",
     "..BBBBBBBB..",
-    "..BDBBBBDB..",
+    "..AAAAAAAA..",
+    "..ADAAAADA..",
     ".BBBBBBBBBB.",
-    ".BBBBWWBBBB.",
     "..BBBBBBBB..",
     "...BBBBBB...",
     "..b......b..",
@@ -65,11 +58,10 @@ const MOMENTUM: [string[], string[]] = [
   ],
 ];
 
-const GROWTH: [string[], string[]] = [
-  // normal — two-leaf sprout on top
+const SPROUT: [string[], string[]] = [
+  // normal — single leaf on top, tidy bowtie at the neck
   [
-    "....F..F....",
-    "....FFFF....",
+    ".....F......",
     ".....FF.....",
     "...BBBBBB...",
     "..BBBBBBBB..",
@@ -78,98 +70,99 @@ const GROWTH: [string[], string[]] = [
     "..BBBWWBBB..",
     "..BBBBBBBB..",
     "...BBBBBB...",
+    "...AaaA.....",
+    "...b..b.....",
+    "............",
+  ],
+  // squeezed
+  [
+    "............",
+    ".....F......",
+    ".....FF.....",
+    "...BBBBBB...",
+    "..BDBBBBDB..",
+    "..BBBBBBBB..",
+    ".BBBBWWBBBB.",
+    "..BBBBBBBB..",
+    "...BBBBBB...",
+    "..AaaaA.....",
+    "..b...b.....",
+    "............",
+  ],
+];
+
+const PENNY: [string[], string[]] = [
+  // normal — big round nerdy glasses, coin hugged at belly
+  [
+    "............",
+    "...BBBBBB...",
+    "..BBBBBBBB..",
+    "..AAABBAAA..",
+    "..ADABBADA..",
+    "..AAABBAAA..",
+    "..BBBBBBBB..",
+    "..BBFFFFBB..",
+    "..BBFFFFBB..",
+    "...BBBBBB...",
     "...b....b...",
     "............",
   ],
   // squeezed
   [
     "............",
-    "....F..F....",
-    "....FFFF....",
+    "............",
     "...BBBBBB...",
-    "..BBBBBBBB..",
-    "..BDBBBBDB..",
+    "..AAABBAAA..",
+    "..ADABBADA..",
+    "..AAABBAAA..",
     ".BBBBBBBBBB.",
-    ".BBBBWWBBBB.",
-    "..BBBBBBBB..",
+    ".BBBFFFFBBB.",
+    ".BBBFFFFBBB.",
     "...BBBBBB...",
     "..b......b..",
     "............",
   ],
 ];
 
-const VALUE: [string[], string[]] = [
-  // normal — flat sturdy head, coin hugged at the belly
+const SAGE: [string[], string[]] = [
+  // normal — monk-like hood draped over head and shoulders
   [
-    "............",
-    "............",
-    "..BBBBBBBB..",
-    "..BBBBBBBB..",
-    "..BDBBBBDB..",
-    "..BBBBBBBB..",
-    "..BBFFFFBB..",
-    "..BBFFFFBB..",
-    "..BBBBBBBB..",
-    "..BBBBBBBB..",
-    "..b......b..",
+    "...AAAAAA...",
+    "..AAAAAAAA..",
+    "..AABBBBAA..",
+    "..ABBBBBBA..",
+    "..ABDBBDBA..",
+    "..ABBBBBBA..",
+    "..ABBWWBBA..",
+    "..AABBBBAA..",
+    "..AAAAAAAA..",
+    "...AAAAAA...",
+    "...b....b...",
     "............",
   ],
   // squeezed
   [
     "............",
-    "............",
-    "............",
-    "..BBBBBBBB..",
-    "..BDBBBBDB..",
-    "..BBBBBBBB..",
-    ".BBBFFFFBBB.",
-    ".BBBFFFFBBB.",
-    "..BBBBBBBB..",
-    "..BBBBBBBB..",
-    ".b........b.",
-    "............",
-  ],
-];
-
-const MACRO: [string[], string[]] = [
-  // normal — twin radar antennae with tips
-  [
-    "...b....b...",
-    "...B....B...",
-    "....B..B....",
-    "...BBBBBB...",
-    "..BBBBBBBB..",
-    "..BDBBBBDB..",
-    "..BBBBBBBB..",
-    "..BBBWWBBB..",
-    "..BBBBBBBB..",
-    "...BBBBBB...",
-    "...b....b...",
-    "............",
-  ],
-  // squeezed — antennae wobble inward
-  [
-    "............",
-    "...b....b...",
-    "...BB..BB...",
-    "....BBBB....",
-    "..BBBBBBBB..",
-    "..BDBBBBDB..",
-    ".BBBBBBBBBB.",
-    ".BBBBWWBBBB.",
-    "..BBBBBBBB..",
-    "...BBBBBB...",
+    "...AAAAAA...",
+    "..AAAAAAAA..",
+    "..AABBBBAA..",
+    "..ABDBBDBA..",
+    "..ABBBBBBA..",
+    ".AABBWWBBAA.",
+    "..AABBBBAA..",
+    "..AAAAAAAA..",
+    "...AAAAAA...",
     "..b......b..",
     "............",
   ],
 ];
 
-const CONTRARIAN: [string[], string[]] = [
-  // normal — back cowlick (left), gaze shifted left (away from the crowd)
+const NIX: [string[], string[]] = [
+  // normal — slouchy beanie, gaze turned left (away from the crowd)
   [
-    "............",
-    "..BB........",
-    "..BBB.......",
+    "...AAAAAA...",
+    "..AAAAAAAA..",
+    "..AAAAAAAA..",
     "...BBBBBB...",
     "..BBBBBBBB..",
     "..BDBBDBBB..",
@@ -183,10 +176,10 @@ const CONTRARIAN: [string[], string[]] = [
   // squeezed
   [
     "............",
-    "............",
-    "..BB........",
-    "..BBBBBBB...",
-    "..BBBBBBBB..",
+    "...AAAAAA...",
+    "..AAAAAAAA..",
+    "..AAAAAAAA..",
+    "...BBBBBB...",
     "..BDBBDBBB..",
     ".BBBBBBBBBB.",
     ".BBBWWBBBBB.",
@@ -197,20 +190,54 @@ const CONTRARIAN: [string[], string[]] = [
   ],
 ];
 
-// Per-persona grayscale palettes from the persona ramp. Monochrome on purpose —
-// the only color in the app lives on factual market moves, never on a lens.
-const PAL: Record<PersonaId, PetPalette> = {
-  momentum: { B: "#f2f2f4", b: "#a9a9b0", F: "#ffffff", W: "#0f0f13", D: "#0f0f13" },
-  growth: { B: "#c9c9cf", b: "#83838a", F: "#eef0ee", W: "#101014", D: "#101014" },
-  value: { B: "#9a9aa1", b: "#5f5f66", F: "#dcdce0", W: "#0f0f13", D: "#0f0f13" },
-  macro: { B: "#787880", b: "#4a4a51", F: "#9a9aa1", W: "#0c0c10", D: "#0c0c10" },
-  contrarian: { B: "#d8d8dd", b: "#8f8f96", F: "#f2f2f5", W: "#101014", D: "#101014" },
+export const PETS: Record<PersonaId, PixelPet> = {
+  momentum: { frames: BLITZ },
+  growth: { frames: SPROUT },
+  value: { frames: PENNY },
+  macro: { frames: SAGE },
+  contrarian: { frames: NIX },
 };
 
-export const PETS: Record<PersonaId, PixelPet> = {
-  momentum: { frames: MOMENTUM, palette: PAL.momentum },
-  growth: { frames: GROWTH, palette: PAL.growth },
-  value: { frames: VALUE, palette: PAL.value },
-  macro: { frames: MACRO, palette: PAL.macro },
-  contrarian: { frames: CONTRARIAN, palette: PAL.contrarian },
-};
+/** Derive a pet's color set from its persona signature color. */
+export interface PetPalette {
+  B: string;
+  b: string;
+  A: string;
+  a: string;
+  F: string;
+  W: string;
+  D: string;
+}
+
+// Lighten/darken a #rrggbb toward white/black by a 0..1 amount.
+function shade(hex: string, amt: number): string {
+  const n = parseInt(hex.slice(1), 16);
+  let r = (n >> 16) & 255;
+  let g = (n >> 8) & 255;
+  let b = n & 255;
+  if (amt >= 0) {
+    r += (255 - r) * amt;
+    g += (255 - g) * amt;
+    b += (255 - b) * amt;
+  } else {
+    const k = 1 + amt;
+    r *= k;
+    g *= k;
+    b *= k;
+  }
+  const h = (v: number) => Math.round(v).toString(16).padStart(2, "0");
+  return `#${h(r)}${h(g)}${h(b)}`;
+}
+
+export function petPalette(id: PersonaId): PetPalette {
+  const base = PERSONA_STYLE[id].color;
+  return {
+    B: base,
+    b: shade(base, -0.28), // body shade
+    A: shade(base, -0.55), // accessory (dark, reads as black-ish object)
+    a: shade(base, -0.4), // accessory highlight
+    F: shade(base, 0.45), // leaf/coin accent (light tint of the color)
+    W: "#0e0e12", // eye/lens (dark on the colored body)
+    D: "#0e0e12", // pupil
+  };
+}

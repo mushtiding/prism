@@ -629,12 +629,93 @@ button {
 .cast {
   margin-top: 48px;
 }
+
+/* ---- Habitat strip: pets roam here above the cards ------------------------ */
+.habitat {
+  position: relative;
+  height: 92px;
+  margin-bottom: 14px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background:
+    radial-gradient(120% 140% at 50% -40%, rgba(255, 255, 255, 0.05), transparent 60%),
+    var(--bg-elev);
+  overflow: hidden;
+}
+.habitat__ground {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 20px;
+  height: 1px;
+  background: var(--line);
+}
+.walker {
+  position: absolute;
+  bottom: 14px;
+  transform: translateX(-50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  /* smooth glide between position ticks */
+  transition: left 0.22s linear, bottom 0.25s var(--ease);
+  padding: 0;
+}
+.walker:hover {
+  bottom: 20px;
+  z-index: 4;
+}
+.walker--selected {
+  bottom: 22px;
+  z-index: 5;
+}
+.walker__sprite {
+  display: inline-block;
+  transform-origin: center bottom; /* inline transform sets scaleX (facing) */
+}
+/* a tiny vertical hop while stepping — on the inner sprite so it composes with
+   the flip on the wrapper rather than overriding it */
+.walker__sprite--step .pixelpet {
+  animation: step 0.44s var(--ease) infinite;
+}
+@keyframes step {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-2px); }
+}
+.walker__name {
+  font-family: var(--font-mono);
+  font-size: 9.5px;
+  letter-spacing: 0.06em;
+  font-weight: 600;
+  opacity: 0;
+  transform: translateY(2px);
+  transition: opacity 0.2s, transform 0.2s;
+  white-space: nowrap;
+}
+.walker:hover .walker__name,
+.walker--selected .walker__name {
+  opacity: 1;
+  transform: translateY(0);
+}
+.walker__shadow {
+  position: absolute;
+  bottom: -4px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 30px;
+  height: 5px;
+  border-radius: 50%;
+  background: radial-gradient(ellipse, rgba(0, 0, 0, 0.7), transparent 70%);
+}
+
 .cast__grid {
   display: grid;
   grid-template-columns: repeat(5, 1fr);
   gap: 12px;
 }
 .persona-card {
+  position: relative;
   border: 1px solid var(--line);
   border-radius: var(--radius);
   background: var(--bg-elev);
@@ -642,15 +723,45 @@ button {
   text-align: left;
   display: flex;
   flex-direction: column;
-  gap: 14px;
+  gap: 11px;
   transition: transform 0.25s var(--ease), border-color 0.25s var(--ease),
-    background 0.25s var(--ease);
-  min-height: 150px;
+    background 0.25s var(--ease), box-shadow 0.25s var(--ease);
+  min-height: 168px;
 }
-.persona-card:hover {
+/* a thin signature-color cap on each card */
+.persona-card::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 16px;
+  right: 16px;
+  height: 2px;
+  border-radius: 0 0 2px 2px;
+  background: var(--accent);
+  opacity: 0.55;
+  transition: opacity 0.25s var(--ease);
+}
+.persona-card:hover,
+.persona-card--hi {
   transform: translateY(-3px);
-  border-color: var(--line-strong);
+  border-color: color-mix(in srgb, var(--accent) 55%, var(--line-strong));
   background: var(--bg-elev-2);
+  box-shadow: 0 10px 34px -18px var(--accent);
+}
+.persona-card--hi::before,
+.persona-card:hover::before {
+  opacity: 1;
+}
+.persona-card--hi .petscreen {
+  border-color: color-mix(in srgb, var(--accent) 60%, var(--line-strong));
+}
+.persona-card__charname {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  font-weight: 600;
+  margin-top: -2px;
 }
 .persona-card__top {
   display: flex;

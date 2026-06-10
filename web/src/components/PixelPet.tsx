@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import type { PersonaId } from "@prism/shared";
-import { PETS, type PetLegend, type PetPalette } from "../pixelPets";
+import { PETS, petPalette, type PetLegend, type PetPalette } from "../pixelPets";
 
 const GRID = 12;
 
@@ -10,6 +10,10 @@ function colorFor(ch: string, pal: PetPalette): string | null {
       return pal.B;
     case "b":
       return pal.b;
+    case "A":
+      return pal.A;
+    case "a":
+      return pal.a;
     case "F":
       return pal.F;
     case "W":
@@ -35,9 +39,9 @@ function frameBoxShadow(frame: string[], pal: PetPalette, px: number): string {
 }
 
 /**
- * A Tamagotchi-style pixel persona. Alternates between its normal and squeezed
- * frames on an interval to produce a little idle bounce. `animate=false` holds
- * the normal frame (used outside the cast, e.g. the drawer header).
+ * A Tamagotchi-style pixel persona in its signature color. Alternates between
+ * its normal and squeezed frames to produce a little idle bounce. `animate=false`
+ * holds the normal frame (used outside the cast, e.g. the drawer header).
  */
 export function PixelPet({
   id,
@@ -51,6 +55,7 @@ export function PixelPet({
   intervalMs?: number;
 }) {
   const pet = PETS[id];
+  const pal = petPalette(id);
   const [frame, setFrame] = useState(0);
 
   useEffect(() => {
@@ -78,7 +83,7 @@ export function PixelPet({
         style={{
           width: px,
           height: px,
-          boxShadow: frameBoxShadow(pet.frames[frame], pet.palette, px),
+          boxShadow: frameBoxShadow(pet.frames[frame], pal, px),
         }}
       />
     </span>
