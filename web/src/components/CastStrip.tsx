@@ -1,6 +1,6 @@
 import type { DayContent, PersonaDef, PersonaId } from "@prism/shared";
 import { PERSONA_IDS } from "@prism/shared";
-import { PERSONA_STYLE } from "../personaStyle";
+import { PixelPet } from "./PixelPet";
 
 /** Average a persona's conviction across the day's key points → overall lean. */
 function dailyLean(day: DayContent, id: PersonaId): number {
@@ -34,7 +34,6 @@ export function CastStrip({
         {PERSONA_IDS.map((id) => {
           const def = defs.find((d) => d.id === id);
           if (!def) return null;
-          const style = PERSONA_STYLE[id];
           const lean = dailyLean(day, id);
           return (
             <button
@@ -43,11 +42,8 @@ export function CastStrip({
               onClick={() => onPick(id)}
             >
               <div className="persona-card__top">
-                <span
-                  className="persona-card__dot"
-                  style={{ background: style.color }}
-                >
-                  {style.glyph}
+                <span className="petscreen">
+                  <PixelPet id={id} px={5} />
                 </span>
                 <span className="persona-card__stance mono">
                   {leanWord(lean)}

@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import type { PersonaDef, PersonaPOV } from "@prism/shared";
-import { PERSONA_STYLE } from "../personaStyle";
+import { PixelPet } from "./PixelPet";
 
 const HORIZON_LABEL: Record<string, string> = {
   short: "Short term",
@@ -27,7 +27,6 @@ export function PersonaDrawer({
   onClose: () => void;
 }) {
   const [showDef, setShowDef] = useState(false);
-  const style = PERSONA_STYLE[def.id];
   const words = pov.text.trim().split(/\s+/).length;
 
   // Close on Escape; lock body scroll while open.
@@ -54,11 +53,8 @@ export function PersonaDrawer({
       >
         <div className="drawer__bar">
           <div className="drawer__bar-left">
-            <span
-              className="persona-card__dot"
-              style={{ background: style.color }}
-            >
-              {style.glyph}
+            <span className="petscreen petscreen--sm">
+              <PixelPet id={def.id} px={3} />
             </span>
             <div>
               <div className="drawer__persona-name">{def.name}</div>

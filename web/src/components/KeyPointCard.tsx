@@ -1,7 +1,7 @@
 import { useState } from "react";
 import type { KeyPoint, PersonaPOV } from "@prism/shared";
 import { PERSONA_IDS } from "@prism/shared";
-import { PERSONA_STYLE } from "../personaStyle";
+import { PERSONA_STYLE, magnitudeDirection } from "../personaStyle";
 import { Spectrum, type SpectrumPoint } from "./Spectrum";
 
 const LEVEL_WORD = {
@@ -42,7 +42,17 @@ export function KeyPointCard({
           <div className="kp__summary">{keyPoint.summary}</div>
           <div className="kp__meta">
             {keyPoint.magnitude && (
-              <span className="kp__mag mono">{keyPoint.magnitude}</span>
+              <span
+                className={`kp__mag mono${
+                  magnitudeDirection(keyPoint.magnitude) === "up"
+                    ? " kp__mag--up"
+                    : magnitudeDirection(keyPoint.magnitude) === "down"
+                      ? " kp__mag--down"
+                      : ""
+                }`}
+              >
+                {keyPoint.magnitude}
+              </span>
             )}
             <span className="kp__divlabel">
               {LEVEL_WORD[keyPoint.divergence.level]} ·{" "}

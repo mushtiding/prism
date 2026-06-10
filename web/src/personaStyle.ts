@@ -21,6 +21,22 @@ export function stanceWord(label: StanceLabel): string {
   return label;
 }
 
+/**
+ * Direction of a factual magnitude string ("+9% after hours", "-2.1%", "Dow
+ * -22.6%"). Drives the only color in the app — and only on facts, never lenses.
+ * Returns null when there's no clear sign (e.g. "mechanism, not a price").
+ */
+export function magnitudeDirection(
+  magnitude: string | undefined,
+): "up" | "down" | null {
+  if (!magnitude) return null;
+  // First explicit signed number wins (handles "S&P +0.4%, Nasdaq +0.7%" -> up,
+  // and "10Y yield +6bps" -> up). A leading minus anywhere with a digit = down.
+  const m = magnitude.match(/([+-])\s*\d/);
+  if (!m) return null;
+  return m[1] === "-" ? "down" : "up";
+}
+
 /** Plain-English reading of a divergence level, shown under the hero score. */
 export function divergenceBlurb(
   level: "consensus" | "mixed" | "contested",
