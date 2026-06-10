@@ -1,0 +1,253 @@
+{
+  "date": "2026-06-09",
+  "kind": "daily",
+  "source": "sample",
+  "keyPoints": [
+    {
+      "id": "kp1",
+      "summary": "A major chipmaker reported record quarterly revenue and raised full-year guidance; its shares rose about 9% in after-hours trading.",
+      "detail": "The company reported revenue above its prior guidance and lifted its outlook for the full year, citing demand tied to AI infrastructure. The after-hours move added roughly 9% to the share price following the release.",
+      "magnitude": "+9% after hours",
+      "sources": [
+        {
+          "title": "Chipmaker posts record revenue, raises guidance",
+          "publisher": "Reuters",
+          "url": "https://www.reuters.com/technology/"
+        }
+      ],
+      "divergence": {
+        "score": 0.735,
+        "level": "contested",
+        "spread": 1.47,
+        "mostBullish": "momentum",
+        "mostBearish": "value"
+      }
+    },
+    {
+      "id": "kp2",
+      "summary": "The S&P 500 closed up 0.4% and the Nasdaq Composite closed up 0.7%, with most gains in large-cap technology.",
+      "detail": "Index gains were concentrated in a small number of large technology names. Breadth was narrow, with roughly half of S&P 500 constituents finishing lower on the day.",
+      "magnitude": "S&P +0.4%, Nasdaq +0.7%",
+      "sources": [
+        {
+          "title": "US stocks close higher led by technology",
+          "publisher": "Associated Press",
+          "url": "https://apnews.com/hub/financial-markets"
+        }
+      ],
+      "divergence": {
+        "score": 0.548,
+        "level": "mixed",
+        "spread": 1.095,
+        "mostBullish": "momentum",
+        "mostBearish": "macro"
+      }
+    },
+    {
+      "id": "kp3",
+      "summary": "The 10-year Treasury yield rose 6 basis points to 4.38% after data showed services prices increasing more than economists expected.",
+      "detail": "A monthly services inflation reading came in above consensus. Government bond yields moved up across maturities, with the 10-year yield reaching 4.38%.",
+      "magnitude": "10Y yield +6bps to 4.38%",
+      "sources": [
+        {
+          "title": "Treasury yields rise on hotter services data",
+          "publisher": "Bloomberg",
+          "url": "https://www.bloomberg.com/markets/rates-bonds"
+        }
+      ],
+      "divergence": {
+        "score": 0.374,
+        "level": "mixed",
+        "spread": 0.748,
+        "mostBullish": "momentum",
+        "mostBearish": "macro"
+      }
+    },
+    {
+      "id": "kp4",
+      "summary": "Crude oil fell 2.1% to settle at $71.40 a barrel after a report showed US inventories rising more than expected.",
+      "detail": "Weekly inventory data showed a larger-than-expected build in crude stockpiles. Front-month futures settled 2.1% lower at $71.40 per barrel.",
+      "magnitude": "Crude -2.1% to $71.40",
+      "sources": [
+        {
+          "title": "Oil settles lower on inventory build",
+          "publisher": "Reuters",
+          "url": "https://www.reuters.com/business/energy/"
+        }
+      ],
+      "divergence": {
+        "score": 0.2,
+        "level": "consensus",
+        "spread": 0.4,
+        "mostBullish": "growth",
+        "mostBearish": "momentum"
+      }
+    }
+  ],
+  "povs": [
+    {
+      "personaId": "momentum",
+      "text": "The chip name is breaking out on huge volume, and I'm not going to argue with the tape. When a leader moves like this after numbers, the path of least resistance is usually higher for a few sessions. The Nasdaq closing green confirms money is still chasing the same winners. Higher yields and softer oil? Background noise today — they aren't what's moving my screens. The crowd is leaning one way and the trend is my friend until it bends. I'd rather be riding what's already working than sitting on my hands waiting for a cleaner setup that may never come.",
+      "activeBias": "chasing strength — trusting the breakout over any caution flag",
+      "stances": [
+        {
+          "keyPointId": "kp1",
+          "label": "bullish",
+          "score": 2,
+          "rationale": "Clean breakout on volume; ride it."
+        },
+        {
+          "keyPointId": "kp2",
+          "label": "bullish",
+          "score": 1,
+          "rationale": "Index green confirms the trend is intact."
+        },
+        {
+          "keyPointId": "kp3",
+          "label": "neutral",
+          "score": 0,
+          "rationale": "Yields aren't moving my charts today."
+        },
+        {
+          "keyPointId": "kp4",
+          "label": "neutral",
+          "score": 0,
+          "rationale": "Oil isn't where the momentum is."
+        }
+      ]
+    },
+    {
+      "personaId": "growth",
+      "text": "This is the long-term story doing exactly what it's supposed to do. One record quarter inside a multi-year build-out of computing demand — that's the trend showing up in the numbers, not a surprise. The day-to-day index wiggle and a few basis points on yields don't change where this is going over five years. I care about whether the destination is intact, and raised guidance says it is. Cheaper oil is a small tailwind for the broader economy but not central to my thinking. When a secular winner delivers and lifts its outlook, the right instinct for a long-term holder is patience, not reaction. Noise fades; compounding doesn't.",
+      "activeBias": "extrapolating the long arc — treating one quarter as trend confirmation",
+      "stances": [
+        {
+          "keyPointId": "kp1",
+          "label": "bullish",
+          "score": 2,
+          "rationale": "The secular thesis is compounding on schedule."
+        },
+        {
+          "keyPointId": "kp2",
+          "label": "bullish",
+          "score": 1,
+          "rationale": "Tech leadership fits the long-term story."
+        },
+        {
+          "keyPointId": "kp3",
+          "label": "neutral",
+          "score": 0,
+          "rationale": "A few basis points don't change a five-year view."
+        },
+        {
+          "keyPointId": "kp4",
+          "label": "bullish",
+          "score": 1,
+          "rationale": "Cheaper energy is a mild economic tailwind."
+        }
+      ]
+    },
+    {
+      "personaId": "value",
+      "text": "Great business, but the price already assumes years of perfection. A 9% jump on a good quarter tells me expectations were sky-high going in — and when you pay for flawless, any stumble gets punished hard. I'm not interested in buying after the move; I want a margin of safety, and there isn't one here. What does interest me: hotter services inflation pushing yields up. Higher rates lower what any future cash flow is worth today, and that math matters far more than one earnings headline. I'd rather hold cash and wait for a quarter that disappoints for non-fundamental reasons. Discipline means being willing to miss this.",
+      "activeBias": "anchoring to a demanded discount — refusing to pay up after the move",
+      "stances": [
+        {
+          "keyPointId": "kp1",
+          "label": "bearish",
+          "score": -1,
+          "rationale": "Priced for perfection; no margin of safety."
+        },
+        {
+          "keyPointId": "kp2",
+          "label": "neutral",
+          "score": 0,
+          "rationale": "Narrow breadth, not a broad bargain."
+        },
+        {
+          "keyPointId": "kp3",
+          "label": "bearish",
+          "score": -1,
+          "rationale": "Higher rates lower the value of future cash flows."
+        },
+        {
+          "keyPointId": "kp4",
+          "label": "neutral",
+          "score": 0,
+          "rationale": "Lower oil is marginal to intrinsic value."
+        }
+      ]
+    },
+    {
+      "personaId": "macro",
+      "text": "The market keeps leaning on a handful of names tied to one spending cycle, and today proves it — the index only rose because a few giants did. That's fragility, not strength. If that cycle cools, a lot falls together. More telling: services inflation ran hot and yields jumped. That makes near-term rate cuts less likely and tightens financial conditions just as everyone crowds the same trade. Lower oil helps the inflation picture a little, but not enough to offset sticky services. When concentration and rising rates show up on the same day, my job is to ask what breaks if sentiment turns. I'd be managing risk here, not adding it.",
+      "activeBias": "weighting downside heavily — reading concentration and rates as tail risk",
+      "stances": [
+        {
+          "keyPointId": "kp1",
+          "label": "bearish",
+          "score": -1,
+          "rationale": "One more reason the index is dangerously concentrated."
+        },
+        {
+          "keyPointId": "kp2",
+          "label": "bearish",
+          "score": -2,
+          "rationale": "Narrow breadth is fragility, not health."
+        },
+        {
+          "keyPointId": "kp3",
+          "label": "bearish",
+          "score": -2,
+          "rationale": "Hot services data tightens conditions and delays cuts."
+        },
+        {
+          "keyPointId": "kp4",
+          "label": "neutral",
+          "score": 0,
+          "rationale": "Helpful for inflation but not decisive."
+        }
+      ]
+    },
+    {
+      "personaId": "contrarian",
+      "text": "Everyone already loves this chip story, and that's exactly what makes me cautious. When the reaction to good news is this uniform — every headline cheering, every index green on the same few names — the surprise usually isn't more upside. It's whatever nobody is watching. Right now nobody's watching the bond market, and yet that's where the hot inflation print just landed. The crowd is staring at one shiny earnings beat while the thing that could actually reprice everything sits quietly in the corner. I'm not calling a top. I'm just noting that consensus this tidy rarely gets rewarded. The interesting trade is almost never the one everybody's already in.",
+      "activeBias": "fading consensus — distrusting a reaction this unanimous",
+      "stances": [
+        {
+          "keyPointId": "kp1",
+          "label": "bearish",
+          "score": -1,
+          "rationale": "A reaction this unanimous rarely has more upside."
+        },
+        {
+          "keyPointId": "kp2",
+          "label": "neutral",
+          "score": 0,
+          "rationale": "Narrow, crowded leadership — I'd fade the enthusiasm."
+        },
+        {
+          "keyPointId": "kp3",
+          "label": "bearish",
+          "score": -1,
+          "rationale": "The ignored bond signal is the real story."
+        },
+        {
+          "keyPointId": "kp4",
+          "label": "neutral",
+          "score": 0,
+          "rationale": "Nobody's positioned around oil here."
+        }
+      ]
+    }
+  ],
+  "dayDivergence": {
+    "score": 0.423,
+    "level": "mixed",
+    "spread": 0.846,
+    "mostBullish": "growth",
+    "mostBearish": "macro"
+  },
+  "generatedAt": "2026-06-10T00:00:00.000Z",
+  "disclaimer": "Every take here is one lens — an opinion, not investment advice. Prism is not personalized to you and never tells you to buy, sell, or hold."
+}

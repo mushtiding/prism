@@ -1,0 +1,204 @@
+{
+  "date": "2021-01-27",
+  "kind": "timeMachine",
+  "source": "sample",
+  "title": "The GameStop squeeze — Jan 27, 2021",
+  "keyPoints": [
+    {
+      "id": "kp1",
+      "summary": "Shares of a video-game retailer rose 135% in a single session and were up roughly 1,700% over the month.",
+      "detail": "The stock's move was driven largely by coordinated buying among retail investors organizing on social media, rather than by a change in the company's financial results.",
+      "magnitude": "+135% in a day, ~1,700% MTD",
+      "sources": [
+        {
+          "title": "Retail traders drive video-game retailer's stock surge",
+          "publisher": "The Wall Street Journal",
+          "url": "https://www.wsj.com/articles/gamestop-mania"
+        }
+      ],
+      "divergence": {
+        "score": 0.678,
+        "level": "contested",
+        "spread": 1.356,
+        "mostBullish": "momentum",
+        "mostBearish": "value"
+      }
+    },
+    {
+      "id": "kp2",
+      "summary": "Several hedge funds with large short positions in the stock reported significant losses, and at least one received an external capital injection.",
+      "detail": "Funds that had bet against the stock faced large mark-to-market losses as it rose. One prominent short-seller received an injection of outside capital during the episode.",
+      "magnitude": "multi-billion short losses",
+      "sources": [
+        {
+          "title": "Short sellers hit with heavy losses",
+          "publisher": "Reuters",
+          "url": "https://www.reuters.com/business/"
+        }
+      ],
+      "divergence": {
+        "score": 0.49,
+        "level": "mixed",
+        "spread": 0.98,
+        "mostBullish": "momentum",
+        "mostBearish": "macro"
+      }
+    },
+    {
+      "id": "kp3",
+      "summary": "Broad market indexes fell about 2.5% on the session, with commentary linking the move to forced selling by funds covering short positions.",
+      "detail": "The S&P 500 declined around 2.5%. Market commentary connected part of the broad weakness to funds raising cash and unwinding positions to cover losses elsewhere.",
+      "magnitude": "S&P -2.5%",
+      "sources": [
+        {
+          "title": "Stocks slide as short squeeze ripples through market",
+          "publisher": "Bloomberg",
+          "url": "https://www.bloomberg.com/markets"
+        }
+      ],
+      "divergence": {
+        "score": 0.4,
+        "level": "mixed",
+        "spread": 0.8,
+        "mostBullish": "momentum",
+        "mostBearish": "macro"
+      }
+    }
+  ],
+  "povs": [
+    {
+      "personaId": "momentum",
+      "text": "This is the most extreme momentum I've ever seen, and the only thing that matters is that it's going up violently on enormous volume. I don't care about the company's fundamentals — price and crowd energy are the whole story here, and both are screaming. You ride a move like this with tight discipline and you respect that it can reverse just as fast. The crowd is the catalyst, and right now the crowd is overwhelmingly one direction. I'm with the move while it runs, fully aware the exit could be brutal. This is pure tape-reading, and the tape says higher until it violently doesn't.",
+      "activeBias": "riding the parabola — pure trend-following with no fundamental anchor",
+      "stances": [
+        {
+          "keyPointId": "kp1",
+          "label": "bullish",
+          "score": 2,
+          "rationale": "Violent uptrend on massive volume — ride it."
+        },
+        {
+          "keyPointId": "kp2",
+          "label": "bullish",
+          "score": 1,
+          "rationale": "Short covering adds fuel to the move."
+        },
+        {
+          "keyPointId": "kp3",
+          "label": "neutral",
+          "score": 0,
+          "rationale": "Broad weakness isn't where the action is."
+        }
+      ]
+    },
+    {
+      "personaId": "growth",
+      "text": "I have to be honest: this doesn't fit how I think at all. My job is to back businesses whose earnings compound over many years, and nothing about a 1,700% monthly move reflects the underlying company getting better. This is a positioning event, not a growth story. A struggling retailer is still a struggling retailer no matter what the share price does this week. I'd stay completely away — not because I'm bearish on the trade's momentum, but because there's no long-term thesis here for me to own. When price detaches this far from fundamentals, it's outside my circle entirely. I'll wait for real businesses doing real things.",
+      "activeBias": "ignoring the noise — refusing to engage a fundamentals-free move",
+      "stances": [
+        {
+          "keyPointId": "kp1",
+          "label": "bearish",
+          "score": -1,
+          "rationale": "Price has detached from any business reality."
+        },
+        {
+          "keyPointId": "kp2",
+          "label": "neutral",
+          "score": 0,
+          "rationale": "A positioning fight, not a growth signal."
+        },
+        {
+          "keyPointId": "kp3",
+          "label": "neutral",
+          "score": 0,
+          "rationale": "Index wobble is a side effect, not my concern."
+        }
+      ]
+    },
+    {
+      "personaId": "value",
+      "text": "From where I sit, this is the clearest example of price divorced from worth I can imagine. The business is worth what its future cash flows are worth, and those haven't changed because a crowd online decided to buy. A stock up 1,700% in a month on no fundamental news is the opposite of margin of safety — it's maximum danger. I wouldn't touch it long, and as a matter of principle I don't short manias either, because they can stay irrational longer than you can stay solvent. This ends with the price reconnecting to value, and value here is a small fraction of the quote. I'm simply staying away.",
+      "activeBias": "anchoring to intrinsic value — seeing pure overvaluation",
+      "stances": [
+        {
+          "keyPointId": "kp1",
+          "label": "bearish",
+          "score": -2,
+          "rationale": "Price is wildly above any intrinsic worth."
+        },
+        {
+          "keyPointId": "kp2",
+          "label": "neutral",
+          "score": 0,
+          "rationale": "Not my fight; I don't short manias."
+        },
+        {
+          "keyPointId": "kp3",
+          "label": "bearish",
+          "score": -1,
+          "rationale": "Forced unwinds reveal how stretched things are."
+        }
+      ]
+    },
+    {
+      "personaId": "macro",
+      "text": "What worries me isn't the one stock — it's what it reveals. When a single crowded squeeze forces multi-billion-dollar funds to sell their good positions to cover the bad ones, that's contagion plumbing, and the broad index falling 2.5% on the same day proves the ripple is real. My question is always what breaks next, and forced deleveraging is exactly how isolated blowups become market-wide ones. The leverage and interconnection on display here are the actual story. I'd be reducing risk and watching funding markets, not playing the squeeze. One corner of the market melting up while the index falls is precisely the kind of stress signal I don't ignore.",
+      "activeBias": "tracing contagion — reading the squeeze as a deleveraging signal",
+      "stances": [
+        {
+          "keyPointId": "kp1",
+          "label": "bearish",
+          "score": -1,
+          "rationale": "A symptom of dangerous leverage in the system."
+        },
+        {
+          "keyPointId": "kp2",
+          "label": "bearish",
+          "score": -2,
+          "rationale": "Forced fund selling is contagion plumbing."
+        },
+        {
+          "keyPointId": "kp3",
+          "label": "bearish",
+          "score": -2,
+          "rationale": "The index drop confirms deleveraging is spreading."
+        }
+      ]
+    },
+    {
+      "personaId": "contrarian",
+      "text": "My whole discipline is fading the crowd, and here the crowd is overwhelmingly long with religious conviction — so my instinct is to be deeply skeptical of the upside, not to join the party. Everyone piling in is certain they've found a free money machine, and unanimity that loud almost never pays. But I'll add the twist: the people on the other side, the shorts, were the original crowd everyone fed on, and they got run over. The real lesson is that whatever position is most crowded and most certain is the most dangerous — and right now that's the euphoric longs. I'd be looking at what everyone's ignoring while they stare at this one ticker.",
+      "activeBias": "fading euphoria — distrusting the most crowded, certain side",
+      "stances": [
+        {
+          "keyPointId": "kp1",
+          "label": "bearish",
+          "score": -1,
+          "rationale": "Euphoric unanimity rarely gets rewarded."
+        },
+        {
+          "keyPointId": "kp2",
+          "label": "neutral",
+          "score": 0,
+          "rationale": "The squeeze punished the previously crowded shorts."
+        },
+        {
+          "keyPointId": "kp3",
+          "label": "neutral",
+          "score": 0,
+          "rationale": "The ignored fallout matters more than the ticker."
+        }
+      ]
+    }
+  ],
+  "dayDivergence": {
+    "score": 0.442,
+    "level": "mixed",
+    "spread": 0.884,
+    "mostBullish": "momentum",
+    "mostBearish": "macro"
+  },
+  "generatedAt": "2026-06-10T00:00:00.000Z",
+  "disclaimer": "Every take here is one lens — an opinion, not investment advice. Prism is not personalized to you and never tells you to buy, sell, or hold."
+}

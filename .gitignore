@@ -5,3 +5,7 @@ dist/
 server/cache/
 *.log
 .DS_Store
+
+# local artifacts
+.playwright-mcp/
+docs/screenshots/

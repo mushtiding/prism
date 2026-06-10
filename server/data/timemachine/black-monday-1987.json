@@ -1,0 +1,204 @@
+{
+  "date": "1987-10-19",
+  "kind": "timeMachine",
+  "source": "sample",
+  "title": "Black Monday — Oct 19, 1987",
+  "keyPoints": [
+    {
+      "id": "kp1",
+      "summary": "The Dow Jones Industrial Average fell 22.6% in a single session, its largest one-day percentage decline on record.",
+      "detail": "The decline occurred in one trading session with very high volume. It remains the largest single-day percentage drop in the index's history.",
+      "magnitude": "Dow -22.6% in one day",
+      "sources": [
+        {
+          "title": "Stocks plunge 508 points",
+          "publisher": "The New York Times (archive)",
+          "url": "https://www.nytimes.com/1987/10/20/business/"
+        }
+      ],
+      "divergence": {
+        "score": 0.812,
+        "level": "contested",
+        "spread": 1.625,
+        "mostBullish": "value",
+        "mostBearish": "momentum"
+      }
+    },
+    {
+      "id": "kp2",
+      "summary": "Program trading and portfolio-insurance selling strategies were widely cited as amplifying the decline as prices fell.",
+      "detail": "Automated strategies designed to sell as markets dropped contributed additional selling pressure, accelerating the move lower through the session.",
+      "magnitude": "mechanism, not a price",
+      "sources": [
+        {
+          "title": "The role of program trading in the crash",
+          "publisher": "Brady Commission Report (archive)",
+          "url": "https://en.wikipedia.org/wiki/Black_Monday_(1987)"
+        }
+      ],
+      "divergence": {
+        "score": 0.678,
+        "level": "contested",
+        "spread": 1.356,
+        "mostBullish": "value",
+        "mostBearish": "momentum"
+      }
+    },
+    {
+      "id": "kp3",
+      "summary": "Markets across Asia and Europe fell sharply in the same period, with several major indexes down double digits.",
+      "detail": "The decline was global. Major markets in Asia and Europe recorded large losses over the same and following sessions.",
+      "magnitude": "global double-digit declines",
+      "sources": [
+        {
+          "title": "A global market rout",
+          "publisher": "Financial Times (archive)",
+          "url": "https://en.wikipedia.org/wiki/Black_Monday_(1987)"
+        }
+      ],
+      "divergence": {
+        "score": 0.447,
+        "level": "mixed",
+        "spread": 0.894,
+        "mostBullish": "value",
+        "mostBearish": "momentum"
+      }
+    }
+  ],
+  "povs": [
+    {
+      "personaId": "momentum",
+      "text": "The tape just broke in the most violent way I've ever seen, and the one rule that keeps you alive is don't fight a move like this. Everything is going down together, and there's no bid to lean on. When the trend flips this hard, I'm flat — cash is a position. I'm not trying to be a hero catching a falling knife on day one of a global rout. The momentum is straight down across every market, and until the selling exhausts itself and I see real strength again, there's nothing here for me but danger.",
+      "activeBias": "following the move down — refusing to fight a violent trend",
+      "stances": [
+        {
+          "keyPointId": "kp1",
+          "label": "bearish",
+          "score": -2,
+          "rationale": "Largest down move ever; do not fight it."
+        },
+        {
+          "keyPointId": "kp2",
+          "label": "bearish",
+          "score": -2,
+          "rationale": "Forced mechanical selling feeds the trend."
+        },
+        {
+          "keyPointId": "kp3",
+          "label": "bearish",
+          "score": -2,
+          "rationale": "Every market down together — no shelter."
+        }
+      ]
+    },
+    {
+      "personaId": "growth",
+      "text": "Days like this are terrifying, and even a long-term optimist has to respect a 22% single-session drop. My instinct is that great businesses are still great the morning after a crash, and that selling driven by machines rather than fundamentals eventually creates opportunity. But I won't pretend the ground is steady. The global nature of this scares me, because it suggests something broader than any one company's prospects. For now the long arc I believe in is intact, yet the near-term damage is real and I'd be foolish to call a bottom into mechanical selling I don't understand. Patience now, conviction later.",
+      "activeBias": "looking through the crash — trusting fundamentals over price action",
+      "stances": [
+        {
+          "keyPointId": "kp1",
+          "label": "bearish",
+          "score": -1,
+          "rationale": "Respect the damage, but it's price not fundamentals."
+        },
+        {
+          "keyPointId": "kp2",
+          "label": "neutral",
+          "score": 0,
+          "rationale": "Mechanical selling may create later opportunity."
+        },
+        {
+          "keyPointId": "kp3",
+          "label": "bearish",
+          "score": -1,
+          "rationale": "The global reach is genuinely worrying."
+        }
+      ]
+    },
+    {
+      "personaId": "value",
+      "text": "When price falls 22% in a day and the business hasn't changed, that's the math finally working in my favor. Panic is exactly when margin of safety appears. I'm not buying the whole market blindly, but quality names that were too expensive last week may be reaching prices I'd actually pay. Mechanical selling that ignores fundamentals is the value investor's best friend — it sells me good assets cheap from people who have to sell. I'd be making a list and starting to nibble, slowly, on the highest-quality names. The crowd is terrified; that's usually when the patient buyer is rewarded.",
+      "activeBias": "demanding a discount — treating the panic as a chance to buy quality",
+      "stances": [
+        {
+          "keyPointId": "kp1",
+          "label": "bullish",
+          "score": 2,
+          "rationale": "A violent drop creates the discount I demand."
+        },
+        {
+          "keyPointId": "kp2",
+          "label": "bullish",
+          "score": 1,
+          "rationale": "Forced selling hands me quality cheaply."
+        },
+        {
+          "keyPointId": "kp3",
+          "label": "neutral",
+          "score": 0,
+          "rationale": "Global selling widens the menu but warrants care."
+        }
+      ]
+    },
+    {
+      "personaId": "macro",
+      "text": "This is the kind of day I'm always bracing for. A 22% single-session collapse spreading across every major market is a systemic event, not a stock story. My first question isn't what's cheap — it's what breaks. Forced, mechanical selling means leverage is unwinding, and when leverage unwinds you find out who was over-exposed only after they fail. The global synchronization tells me this is about plumbing and confidence, not earnings. I'd be defensive, focused on whether the financial system itself holds. Bargain-hunting can wait until I know the machine isn't seizing up. Capital preservation is the only job today.",
+      "activeBias": "asking what breaks next — reading the crash as systemic risk",
+      "stances": [
+        {
+          "keyPointId": "kp1",
+          "label": "bearish",
+          "score": -2,
+          "rationale": "A systemic shock, not a buying signal yet."
+        },
+        {
+          "keyPointId": "kp2",
+          "label": "bearish",
+          "score": -2,
+          "rationale": "Leverage unwinding; hidden failures come next."
+        },
+        {
+          "keyPointId": "kp3",
+          "label": "bearish",
+          "score": -2,
+          "rationale": "Global synchronization signals a plumbing crisis."
+        }
+      ]
+    },
+    {
+      "personaId": "contrarian",
+      "text": "Everyone is selling, the headlines are apocalyptic, and that is precisely the setting in which I start to get interested. I won't catch the exact bottom and I'm not pretending the fear is irrational — but maximum unanimity in one direction is rarely the moment to join in. When selling is this mechanical and this universal, a lot of it is forced rather than considered, and forced sellers don't price things; they just dump them. The crowd is certain the world is ending. That certainty itself is the signal. I'd be quietly looking for what's been thrown out with no regard for what it's actually worth.",
+      "activeBias": "fading panic — distrusting unanimous, forced selling",
+      "stances": [
+        {
+          "keyPointId": "kp1",
+          "label": "bullish",
+          "score": 1,
+          "rationale": "Maximum fear is rarely the time to sell with the crowd."
+        },
+        {
+          "keyPointId": "kp2",
+          "label": "bullish",
+          "score": 1,
+          "rationale": "Forced sellers misprice; that's my opportunity."
+        },
+        {
+          "keyPointId": "kp3",
+          "label": "neutral",
+          "score": 0,
+          "rationale": "Global panic is broad — selective, not reckless."
+        }
+      ]
+    }
+  ],
+  "dayDivergence": {
+    "score": 0.636,
+    "level": "contested",
+    "spread": 1.272,
+    "mostBullish": "value",
+    "mostBearish": "momentum"
+  },
+  "generatedAt": "2026-06-10T00:00:00.000Z",
+  "disclaimer": "Every take here is one lens — an opinion, not investment advice. Prism is not personalized to you and never tells you to buy, sell, or hold."
+}
