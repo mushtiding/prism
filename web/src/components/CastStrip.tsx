@@ -68,7 +68,7 @@ export function CastStrip({
             >
               <div className="persona-card__top">
                 <span className="petscreen">
-                  <PixelPet id={id} px={5} />
+                  <PixelPet id={id} px={4} />
                 </span>
                 <span className="persona-card__stance mono">
                   {leanWord(lean)}

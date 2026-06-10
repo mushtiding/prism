@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import type { PersonaId } from "@prism/shared";
 import { PETS, petPalette, type PetLegend, type PetPalette } from "../pixelPets";
 
-const GRID = 12;
+const GRID = 16;
 
 function colorFor(ch: string, pal: PetPalette): string | null {
   switch (ch as PetLegend) {

@@ -105,7 +105,7 @@ export function Habitat({
               className={`walker__sprite${w.moving ? " walker__sprite--step" : ""}`}
               style={{ transform: `scaleX(${w.facing})` }}
             >
-              <PixelPet id={w.id} px={4} />
+              <PixelPet id={w.id} px={3} />
             </span>
             <span className="walker__name" style={{ color: style.color }}>
               {style.charName}

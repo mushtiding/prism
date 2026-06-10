@@ -54,7 +54,7 @@ export function PersonaDrawer({
         <div className="drawer__bar">
           <div className="drawer__bar-left">
             <span className="petscreen petscreen--sm">
-              <PixelPet id={def.id} px={3} />
+              <PixelPet id={def.id} px={2} />
             </span>
             <div>
               <div className="drawer__persona-name">{def.name}</div>
