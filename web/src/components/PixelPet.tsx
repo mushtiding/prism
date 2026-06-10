@@ -20,6 +20,10 @@ function colorFor(ch: string, pal: PetPalette): string | null {
       return pal.W;
     case "D":
       return pal.D;
+    case "K":
+      return pal.K;
+    case "L":
+      return pal.L;
     default:
       return null; // "." transparent
   }

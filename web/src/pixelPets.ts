@@ -15,7 +15,18 @@ import { PERSONA_STYLE } from "./personaStyle";
 //   .  transparent   B  body (signature color)   b  body shade
 //   A  accessory     a  accessory shade           F  accent (leaf/coin)
 //   W  eye white      D  pupil
-export type PetLegend = "." | "B" | "b" | "A" | "a" | "F" | "W" | "D";
+//   K  true black (sunglasses, glasses frames)    L  clear glass lens (see-through)
+export type PetLegend =
+  | "."
+  | "B"
+  | "b"
+  | "A"
+  | "a"
+  | "F"
+  | "W"
+  | "D"
+  | "K"
+  | "L";
 
 export interface PixelPet {
   /** [normalFrame, squeezedFrame], each 12 rows x 12 chars. */
@@ -26,16 +37,16 @@ export interface PixelPet {
 // columns 2–9; accessories drawn over the face/head per character.
 
 const BLITZ: [string[], string[]] = [
-  // normal — sunglasses across the eyes
+  // normal — black sunglasses across the eyes (K = true black, W = lens shine)
   [
     "............",
     "............",
     "...BBBBBB...",
     "..BBBBBBBB..",
     "..BBBBBBBB..",
-    "..AAAAAAAA..",
-    "..ADAAAADA..",
-    "..BBBBBBBB..",
+    "..KKKKKKKK..",
+    "..KWKKKKWK..",
+    "..BBKKKKBB..",
     "..BBBBBBBB..",
     "...BBBBBB...",
     "...b....b...",
@@ -48,9 +59,9 @@ const BLITZ: [string[], string[]] = [
     "............",
     "...BBBBBB...",
     "..BBBBBBBB..",
-    "..AAAAAAAA..",
-    "..ADAAAADA..",
-    ".BBBBBBBBBB.",
+    "..KKKKKKKK..",
+    "..KWKKKKWK..",
+    ".BBKKKKKKBB.",
     "..BBBBBBBB..",
     "...BBBBBB...",
     "..b......b..",
@@ -92,15 +103,16 @@ const SPROUT: [string[], string[]] = [
 ];
 
 const PENNY: [string[], string[]] = [
-  // normal — big round nerdy glasses, coin hugged at belly
+  // normal — big nerdy glasses: black round frames (K), clear see-through lens
+  // (L) with the eyes (D) visible inside, black bridge. Coin hugged at belly.
   [
     "............",
     "...BBBBBB...",
-    "..BBBBBBBB..",
-    "..AAABBAAA..",
-    "..ADABBADA..",
-    "..AAABBAAA..",
-    "..BBBBBBBB..",
+    "..BKKBBKKB..",
+    "..KLLKKLLK..",
+    "..KLDKKLDK..",
+    "..KLLKKLLK..",
+    "..BKKBBKKB..",
     "..BBFFFFBB..",
     "..BBFFFFBB..",
     "...BBBBBB...",
@@ -111,11 +123,11 @@ const PENNY: [string[], string[]] = [
   [
     "............",
     "............",
-    "...BBBBBB...",
-    "..AAABBAAA..",
-    "..ADABBADA..",
-    "..AAABBAAA..",
-    ".BBBBBBBBBB.",
+    "..BKKBBKKB..",
+    "..KLLKKLLK..",
+    "..KLDKKLDK..",
+    "..KLLKKLLK..",
+    ".BBKKBBKKBB.",
     ".BBBFFFFBBB.",
     ".BBBFFFFBBB.",
     "...BBBBBB...",
@@ -207,6 +219,8 @@ export interface PetPalette {
   F: string;
   W: string;
   D: string;
+  K: string;
+  L: string;
 }
 
 // Lighten/darken a #rrggbb toward white/black by a 0..1 amount.
@@ -239,5 +253,7 @@ export function petPalette(id: PersonaId): PetPalette {
     F: shade(base, 0.45), // leaf/coin accent (light tint of the color)
     W: "#0e0e12", // eye/lens (dark on the colored body)
     D: "#0e0e12", // pupil
+    K: "#0a0a0c", // true black — sunglasses, glasses frames
+    L: shade(base, 0.62), // clear glass lens — light tint of the body (see-through)
   };
 }
