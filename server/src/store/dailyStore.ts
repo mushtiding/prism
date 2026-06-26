@@ -3,8 +3,10 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import type { DayContent } from "@prism/shared";
 import { config, isLiveMode } from "../config.js";
+import { clearPipeline, logEvent, recordDayOutcome, recordDayStarted, recordFallback, setPipeline } from "../logger.js";
 import { OpenRouterClient } from "../providers/llm.js";
 import { AlphaVantageProvider } from "../providers/marketData.js";
+import { ResilientMarketDataProvider } from "../providers/resilientMarketData.js";
 import { generateDay } from "../pipeline/generate.js";
 import { loadSampleDay } from "./sampleData.js";
 
@@ -54,24 +56,47 @@ export function latestTradingDay(now: Date): string {
  */
 export async function getDay(date: string, now: Date): Promise<DayContent> {
   const cached = await readCache(date);
-  if (cached) return cached;
+  if (cached) {
+    recordDayOutcome("cached", date, cached.source);
+    return cached;
+  }
 
   const existing = inFlight.get(date);
-  if (existing) return existing;
+  if (existing) {
+    logEvent(`day generation already in flight · ${date}; joining existing request`);
+    return existing;
+  }
+
+  recordDayStarted(date);
 
   const promise = (async (): Promise<DayContent> => {
-    if (!isLiveMode()) {
-      return loadSampleDay(date);
-    }
     try {
+      if (!isLiveMode()) {
+        setPipeline("sample day", "bundled JSON");
+        const day = await loadSampleDay(date);
+        recordDayOutcome("sample", date, day.source);
+        return day;
+      }
+
+      setPipeline("daily generation", date);
       const llm = new OpenRouterClient(config.openRouterApiKey!);
-      const market = new AlphaVantageProvider(config.alphaVantageApiKey!);
+      const market = new ResilientMarketDataProvider(
+        new AlphaVantageProvider(config.alphaVantageApiKey!),
+      );
       const day = await generateDay(llm, market, now.toISOString());
+      setPipeline("cache write", date);
       await writeCache(date, day);
+      recordDayOutcome("live", date, day.source);
       return day;
     } catch (err) {
+      const reason = err instanceof Error ? err.message : String(err);
       console.error(`[prism] live generation failed, serving sample:`, err);
-      return loadSampleDay(date);
+      recordFallback(reason);
+      const day = await loadSampleDay(date);
+      recordDayOutcome("sample", date, day.source);
+      return day;
+    } finally {
+      clearPipeline();
     }
   })();
 

@@ -56,8 +56,9 @@ npm install
 # Sample mode (no keys needed) — opens straight to the bundled sample day:
 npm run dev          # server on :8787, web on :5173 → open http://localhost:5173
 
-# Live mode — copy .env.example to .env and set:
+# Live mode — copy .env.example to server/.env and set:
 #   OPENROUTER_API_KEY=...      ALPHAVANTAGE_API_KEY=...
+# The server loads keys from server/.env, not from a repo-root .env.
 ```
 
 Other scripts:

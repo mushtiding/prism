@@ -1,14 +1,22 @@
 import {
   DISCLAIMER,
   type DayContent,
+  type Divergence,
   type KeyPoint,
   type PersonaPOV,
   type Source,
   type StanceLabel,
 } from "@prism/shared";
 import type { LlmClient } from "../providers/llm.js";
-import type { MarketDataProvider } from "../providers/marketData.js";
+import type { LlmResponseFormat } from "../providers/llm.js";
+import type {
+  MarketDataProvider,
+  MarketSnapshot,
+  NewsItem,
+  Quote,
+} from "../providers/marketData.js";
 import { PERSONA_LIST } from "../domain/personas.js";
+import { clearPipeline, logEvent, setPipeline } from "../logger.js";
 import {
   computeDayDivergence,
   withKeyPointDivergence,
@@ -18,6 +26,7 @@ import {
   checkNeutralTone,
   checkNoAdvice,
   checkReadability,
+  countWords,
 } from "../domain/guardrails.js";
 import { extractJson } from "./json.js";
 import {
@@ -54,9 +63,108 @@ interface RawPov {
   }>;
 }
 
+const BRIEFING_RESPONSE_FORMAT: LlmResponseFormat = {
+  type: "json_object",
+};
+
+const POV_RESPONSE_FORMAT: LlmResponseFormat = {
+  type: "json_object",
+};
+
 function clampScore(n: number): number {
   if (Number.isNaN(n)) return 0;
   return Math.max(-2, Math.min(2, Math.round(n)));
+}
+
+function rawHint(raw: string): string {
+  const start = raw.replace(/\s+/g, " ").trim().slice(0, 140);
+  return start
+    ? `raw ${raw.length} chars, starts "${start}"`
+    : `raw ${raw.length} chars`;
+}
+
+function formatReasons(reasons: string[]): string {
+  return reasons.length > 0 ? reasons.join("; ") : "unknown reason";
+}
+
+function blankDivergence(): Divergence {
+  return {
+    score: 0,
+    level: "consensus",
+    spread: 0,
+    mostBullish: null,
+    mostBearish: null,
+  };
+}
+
+function keyPointWithBlankDivergence(
+  keyPoint: Omit<KeyPoint, "divergence">,
+): KeyPoint {
+  return { ...keyPoint, divergence: blankDivergence() };
+}
+
+function quoteSource(symbol: string): Source {
+  return {
+    title: `${symbol} market quote`,
+    publisher: "Market data feed",
+    url: `https://finance.yahoo.com/quote/${encodeURIComponent(symbol)}`,
+  };
+}
+
+function quoteSummary(q: Quote): string {
+  return `${q.symbol} closed at ${q.price} (${q.changePercent}).`;
+}
+
+function fallbackKeyPointFromNews(item: NewsItem, i: number): KeyPoint {
+  return keyPointWithBlankDivergence({
+    id: `kp${i + 1}`,
+    summary: `${item.source.publisher} reported: ${item.title}`,
+    detail:
+      item.summary && item.summary !== item.title
+        ? item.summary
+        : `The cited source published this market-related item for the session.`,
+    sources: [item.source],
+  });
+}
+
+function fallbackKeyPointFromQuote(q: Quote, i: number): KeyPoint {
+  return keyPointWithBlankDivergence({
+    id: `kp${i + 1}`,
+    summary: quoteSummary(q),
+    detail: `${q.symbol} finished the session at ${q.price}, ${q.changePercent} versus the prior close.`,
+    magnitude: q.changePercent,
+    sources: [quoteSource(q.symbol)],
+  });
+}
+
+function buildFeedBackedBriefing(snapshot: MarketSnapshot): KeyPoint[] {
+  const points: KeyPoint[] = [];
+
+  for (const item of snapshot.news) {
+    if (!item.title || !item.source?.url) continue;
+    points.push(fallbackKeyPointFromNews(item, points.length));
+    if (points.length >= 4) break;
+  }
+
+  for (const q of snapshot.indexQuotes) {
+    if (points.length >= 3) break;
+    points.push(fallbackKeyPointFromQuote(q, points.length));
+  }
+
+  if (points.length < 3) {
+    for (const q of [...snapshot.topGainers, ...snapshot.topLosers]) {
+      if (points.length >= 3) break;
+      points.push(fallbackKeyPointFromQuote(q, points.length));
+    }
+  }
+
+  if (points.length < 3) {
+    throw new Error(
+      `Briefing failed and market feed only had ${points.length} fallback key points`,
+    );
+  }
+
+  return points.slice(0, 6).map((kp, i) => ({ ...kp, id: `kp${i + 1}` }));
 }
 
 /** Generate the neutral briefing, retrying once if the tone guardrail trips. */
@@ -75,9 +183,24 @@ async function generateBriefing(
         { role: "system", content: sys },
         { role: "user", content: marketUser },
       ],
-      { maxTokens: 1600 },
+      {
+        maxTokens: 2200,
+        label: `briefing attempt ${attempt + 1}`,
+        responseFormat: BRIEFING_RESPONSE_FORMAT,
+      },
     );
-    const parsed = extractJson<RawBriefing>(raw);
+
+    let parsed: RawBriefing;
+    try {
+      parsed = extractJson<RawBriefing>(raw);
+    } catch (err) {
+      lastErr = `invalid JSON: ${err instanceof Error ? err.message : String(err)}. Return one valid JSON object with a keyPoints array; no prose, no comments, no trailing commas.`;
+      logEvent(
+        `briefing attempt ${attempt + 1} rejected: ${lastErr}; ${rawHint(raw)}`,
+      );
+      continue;
+    }
+
     const kps = parsed.keyPoints ?? [];
 
     // Coerce text fields to strings before tone checks — a free model can emit
@@ -99,17 +222,10 @@ async function generateBriefing(
     const missingSources = safe.filter((kp) => kp.sources.length === 0);
 
     if (toneViolations.length === 0 && countOk && missingSources.length === 0) {
-      return safe.map((kp) => ({
-        ...kp,
-        // Placeholder; real divergence is attached after POVs exist.
-        divergence: {
-          score: 0,
-          level: "consensus" as const,
-          spread: 0,
-          mostBullish: null,
-          mostBearish: null,
-        },
-      }));
+      logEvent(
+        `briefing attempt ${attempt + 1} accepted: ${safe.length} key points`,
+      );
+      return safe.map((kp) => keyPointWithBlankDivergence(kp));
     }
 
     // Surface ALL failure reasons so the single retry has complete feedback.
@@ -121,7 +237,10 @@ async function generateBriefing(
       reasons.push(
         `key points missing sources: ${missingSources.map((k) => k.id).join(", ")}`,
       );
-    lastErr = reasons.join("; ");
+    lastErr = formatReasons(reasons);
+    logEvent(
+      `briefing attempt ${attempt + 1} rejected: ${lastErr}; parsed ${safe.length} key points; ${rawHint(raw)}`,
+    );
   }
   throw new Error(`Briefing failed guardrails: ${lastErr}`);
 }
@@ -147,9 +266,24 @@ async function generatePov(
         { role: "system", content: sys },
         { role: "user", content: userMsg },
       ],
-      { maxTokens: 1200 },
+      {
+        maxTokens: 1400,
+        label: `${persona.name} attempt ${attempt + 1}`,
+        responseFormat: POV_RESPONSE_FORMAT,
+      },
     );
-    const parsed = extractJson<RawPov>(raw);
+
+    let parsed: RawPov;
+    try {
+      parsed = extractJson<RawPov>(raw);
+    } catch (err) {
+      lastErr = `invalid JSON: ${err instanceof Error ? err.message : String(err)}. Return one valid JSON object with text, activeBias, and stances; no prose, no comments, no trailing commas.`;
+      logEvent(
+        `${persona.name} attempt ${attempt + 1} rejected: ${lastErr}; ${rawHint(raw)}`,
+      );
+      continue;
+    }
+
     // Coerce defensively — a free model with no structured-output mode can emit
     // valid JSON whose fields are the wrong type. A non-string text becomes ""
     // and trips the "empty" readability check (a recoverable retry), instead of
@@ -177,6 +311,9 @@ async function generatePov(
     ];
 
     if (violations.length === 0) {
+      logEvent(
+        `${persona.name} attempt ${attempt + 1} accepted: ${countWords(text)} words, ${stances.length}/${validIds.length} stances`,
+      );
       return {
         personaId: persona.id,
         text: text.trim(),
@@ -187,7 +324,10 @@ async function generatePov(
         stances,
       };
     }
-    lastErr = violations.join("; ");
+    lastErr = formatReasons(violations);
+    logEvent(
+      `${persona.name} attempt ${attempt + 1} rejected: ${lastErr}; ${countWords(text)} words, ${stances.length}/${validIds.length} stances; ${rawHint(raw)}`,
+    );
   }
   throw new Error(`${persona.name} POV failed guardrails: ${lastErr}`);
 }
@@ -201,41 +341,61 @@ export async function generateDay(
   market: MarketDataProvider,
   nowIso: string,
 ): Promise<DayContent> {
-  const snapshot = await market.fetchSnapshot();
-  const briefingKeyPoints = await generateBriefing(
-    llm,
-    buildBriefingUser(snapshot),
-  );
+  try {
+    setPipeline("market data", "market snapshot");
+    const snapshot = await market.fetchSnapshot();
 
-  // Five persona calls run in parallel; each reacts to the same base layer.
-  // Use allSettled so one flaky persona doesn't discard the others — salvage
-  // the run as long as a quorum succeeds, rather than collapsing the whole day.
-  const settled = await Promise.allSettled(
-    PERSONA_LIST.map((_, i) => generatePov(llm, i, briefingKeyPoints)),
-  );
-  const povs = settled
-    .filter((r): r is PromiseFulfilledResult<PersonaPOV> => r.status === "fulfilled")
-    .map((r) => r.value);
-  if (povs.length < MIN_PERSONAS_FOR_DAY) {
-    const failed = settled
-      .filter((r) => r.status === "rejected")
-      .map((r) => String((r as PromiseRejectedResult).reason));
-    throw new Error(
-      `Only ${povs.length}/${PERSONA_LIST.length} personas succeeded (need ${MIN_PERSONAS_FOR_DAY}): ${failed.join(" | ")}`,
+    setPipeline("neutral briefing", "OpenRouter LLM");
+    let briefingKeyPoints: KeyPoint[];
+    try {
+      briefingKeyPoints = await generateBriefing(llm, buildBriefingUser(snapshot));
+    } catch (err) {
+      const reason = err instanceof Error ? err.message : String(err);
+      logEvent(
+        `briefing generation failed — using feed-backed live briefing (${reason})`,
+      );
+      briefingKeyPoints = buildFeedBackedBriefing(snapshot);
+    }
+
+    setPipeline("persona POVs", "5 parallel OpenRouter calls");
+    const settled = await Promise.allSettled(
+      PERSONA_LIST.map((_, i) => generatePov(llm, i, briefingKeyPoints)),
     );
+    settled.forEach((result, i) => {
+      if (result.status === "rejected") {
+        logEvent(
+          `${PERSONA_LIST[i].name} failed after retries: ${String(result.reason)}`,
+        );
+      }
+    });
+    const povs = settled
+      .filter((r): r is PromiseFulfilledResult<PersonaPOV> => r.status === "fulfilled")
+      .map((r) => r.value);
+    logEvent(`persona quorum: ${povs.length}/${PERSONA_LIST.length} succeeded`);
+    if (povs.length < MIN_PERSONAS_FOR_DAY) {
+      const failed = settled
+        .filter((r) => r.status === "rejected")
+        .map((r) => String((r as PromiseRejectedResult).reason));
+      throw new Error(
+        `Only ${povs.length}/${PERSONA_LIST.length} personas succeeded (need ${MIN_PERSONAS_FOR_DAY}): ${failed.join(" | ")}`,
+      );
+    }
+
+    setPipeline("divergence", "deterministic scoring");
+    const keyPoints = withKeyPointDivergence(briefingKeyPoints, povs);
+    const dayDivergence = computeDayDivergence(povs);
+
+    return {
+      date: snapshot.tradingDay || nowIso.slice(0, 10),
+      kind: "daily",
+      source: "live",
+      keyPoints,
+      povs,
+      dayDivergence,
+      generatedAt: nowIso,
+      disclaimer: DISCLAIMER,
+    };
+  } finally {
+    clearPipeline();
   }
-
-  const keyPoints = withKeyPointDivergence(briefingKeyPoints, povs);
-  const dayDivergence = computeDayDivergence(povs);
-
-  return {
-    date: snapshot.tradingDay || nowIso.slice(0, 10),
-    kind: "daily",
-    source: "live",
-    keyPoints,
-    povs,
-    dayDivergence,
-    generatedAt: nowIso,
-    disclaimer: DISCLAIMER,
-  };
 }

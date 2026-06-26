@@ -80,7 +80,7 @@ export default function App() {
 
   if (error) {
     return (
-      <Shell health={health} view={view} setView={switchView}>
+      <Shell health={health} day={today} view={view} setView={switchView}>
         <div className="center-state">Couldn’t reach Prism — {error}</div>
       </Shell>
     );
@@ -88,7 +88,7 @@ export default function App() {
 
   if (!today || defs.length === 0) {
     return (
-      <Shell health={health} view={view} setView={switchView}>
+      <Shell health={health} day={today} view={view} setView={switchView}>
         <div className="center-state">
           <span className="pulse">Refracting today’s briefing…</span>
         </div>
@@ -97,7 +97,7 @@ export default function App() {
   }
 
   return (
-    <Shell health={health} view={view} setView={switchView}>
+    <Shell health={health} day={today} view={view} setView={switchView}>
       {view === "today" && (
         <>
           <Hero day={today} />
@@ -211,14 +211,20 @@ function TimeMachineView({
 function Shell({
   children,
   health,
+  day,
   view,
   setView,
 }: {
   children: React.ReactNode;
   health: HealthStatus | null;
+  day: DayContent | null;
   view: View;
   setView: (v: View) => void;
 }) {
+  const showingSample =
+    view === "today" && day?.source === "sample";
+  const badgeLive = health?.mode === "live" && !showingSample;
+
   return (
     <>
       <header className="masthead">
@@ -248,15 +254,21 @@ function Shell({
             {health && (
               <span
                 className={`badge ${
-                  health.mode === "live" ? "badge--live" : "badge--sample"
+                  badgeLive ? "badge--live" : "badge--sample"
                 }`}
                 title={
-                  health.mode === "live"
-                    ? `Live · ${health.model}`
-                    : "Sample data — set API keys for live generation"
+                  showingSample && health.mode === "live"
+                    ? "Live generation failed — showing bundled sample day"
+                    : badgeLive
+                      ? `Live · ${health.model}`
+                      : "Sample data — set API keys for live generation"
                 }
               >
-                {health.mode === "live" ? "● Live" : "Sample data"}
+                {showingSample
+                  ? "Sample data"
+                  : badgeLive
+                    ? "● Live"
+                    : "Sample data"}
               </span>
             )}
           </div>
