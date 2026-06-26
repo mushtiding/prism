@@ -43,7 +43,8 @@ export interface LlmClient {
 }
 
 interface ChatCompletionLike {
-  choices: Array<{ message?: { content?: string | null } }>;
+  choices?: Array<{ message?: { content?: string | null } }>;
+  error?: { message?: string };
 }
 
 function reasoningConfig(): Record<string, unknown> {
@@ -73,6 +74,38 @@ async function appendRawResponseLog(entry: {
     RAW_RESPONSE_LOG,
     `${header}\n${redactSecrets(entry.text)}\n`,
     "utf8",
+  );
+}
+
+function stringifyForLog(value: unknown): string {
+  try {
+    return JSON.stringify(value, null, 2) ?? String(value);
+  } catch {
+    return String(value);
+  }
+}
+
+async function extractCompletionText(
+  completion: ChatCompletionLike | null | undefined,
+  label: string,
+  model: string,
+): Promise<string> {
+  const text = completion?.choices?.[0]?.message?.content;
+  if (typeof text === "string" && text.trim()) return text;
+
+  const errorMessage = completion?.error?.message;
+  const payload = stringifyForLog(completion);
+  await appendRawResponseLog({
+    label,
+    model,
+    text: `NON_TEXT_OPENROUTER_RESPONSE\n${payload}`,
+  });
+  logEvent(`OpenRouter non-text response saved: ${RAW_RESPONSE_LOG}`);
+
+  throw new Error(
+    errorMessage
+      ? `OpenRouter response error: ${errorMessage}`
+      : "OpenRouter response missing choices[0].message.content",
   );
 }
 
@@ -152,8 +185,7 @@ export class OpenRouterClient implements LlmClient {
             request,
             timed,
           ])) as ChatCompletionLike;
-          const text = completion.choices[0]?.message?.content;
-          if (!text) throw new Error("LLM returned empty content");
+          const text = await extractCompletionText(completion, label, model);
           await appendRawResponseLog({ label, model, text });
           logEvent(`OpenRouter raw response saved: ${RAW_RESPONSE_LOG}`);
           track.done(`${model} · ${text.length} chars`);
