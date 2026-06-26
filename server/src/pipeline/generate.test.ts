@@ -1,5 +1,9 @@
-import { describe, it, expect } from "vitest";
-import { generateDay } from "./generate.js";
+import { describe, it, expect, vi } from "vitest";
+import {
+  generateDay,
+  PERSONA_QUORUM_GRACE_MS,
+  POV_RETRY_BASE_DELAY_MS,
+} from "./generate.js";
 import { generateNeutralBriefing } from "./neutralBriefing.js";
 import type { LlmClient, LlmMessage } from "../providers/llm.js";
 import type { MarketDataProvider, MarketSnapshot } from "../providers/marketData.js";
@@ -200,8 +204,59 @@ describe("generateDay", () => {
     expect(day.source).toBe("live");
   });
 
+  it("uses a third compact attempt before dropping a persona", async () => {
+    const calls = new Map<string, number>();
+    const llm: LlmClient = {
+      async generate(messages: LlmMessage[]): Promise<string> {
+        const sys = messages[0]?.content ?? "";
+        const name = sys.match(/You are "([^"]+)"/)?.[1] ?? "";
+        const count = (calls.get(name) ?? 0) + 1;
+        calls.set(name, count);
+        if (name === "Growth bull" && count < 3) return '{"text":';
+        return validPov(keyPointIdsFromPrompt(messages[1]?.content ?? ""));
+      },
+    };
+
+    const day = await generateDay(llm, market, "2026-06-09T12:00:00.000Z");
+
+    expect(calls.get("Growth bull")).toBe(3);
+    expect(day.povs).toHaveLength(5);
+  });
+
+  it("retries transient provider failures instead of dropping the persona", async () => {
+    vi.useFakeTimers();
+    try {
+      const calls = new Map<string, number>();
+      const llm: LlmClient = {
+        async generate(messages: LlmMessage[]): Promise<string> {
+          const sys = messages[0]?.content ?? "";
+          const name = sys.match(/You are "([^"]+)"/)?.[1] ?? "";
+          const count = (calls.get(name) ?? 0) + 1;
+          calls.set(name, count);
+          if (name === "Contrarian" && count < 3) {
+            throw new Error("temporary upstream capacity error");
+          }
+          return validPov(keyPointIdsFromPrompt(messages[1]?.content ?? ""));
+        },
+      };
+
+      const generating = generateDay(
+        llm,
+        market,
+        "2026-06-09T12:00:00.000Z",
+      );
+      await vi.advanceTimersByTimeAsync(POV_RETRY_BASE_DELAY_MS * 3);
+      const day = await generating;
+
+      expect(calls.get("Contrarian")).toBe(3);
+      expect(day.povs).toHaveLength(5);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
   it("salvages the day when one persona repeatedly fails (quorum met)", async () => {
-    // Make ONLY the Momentum trader fail both attempts (empty text -> readability
+    // Make ONLY the Momentum trader fail every attempt (empty text -> readability
     // violation); every other persona returns a valid POV.
     const llm = makeLlm((name) =>
       name === "Momentum trader"
@@ -216,20 +271,31 @@ describe("generateDay", () => {
   });
 
   it("publishes after persona quorum when remaining model calls hang", async () => {
-    const hanging = new Set(["Macro / risk manager", "Contrarian"]);
-    const llm = makeLlm((name) =>
-      hanging.has(name) ? new Promise<string>(() => undefined) : validPov(),
-    );
+    vi.useFakeTimers();
+    try {
+      const hanging = new Set(["Macro / risk manager", "Contrarian"]);
+      const llm = makeLlm((name) =>
+        hanging.has(name) ? new Promise<string>(() => undefined) : validPov(),
+      );
 
-    const day = await generateDay(llm, market, "2026-06-09T12:00:00.000Z");
+      const generating = generateDay(
+        llm,
+        market,
+        "2026-06-09T12:00:00.000Z",
+      );
+      await vi.advanceTimersByTimeAsync(PERSONA_QUORUM_GRACE_MS);
+      const day = await generating;
 
-    expect(day.povs.length).toBe(3);
-    expect(day.povs.map((p) => p.personaId)).toEqual([
-      "momentum",
-      "growth",
-      "value",
-    ]);
-    expect(day.source).toBe("live");
+      expect(day.povs.length).toBe(3);
+      expect(day.povs.map((p) => p.personaId)).toEqual([
+        "momentum",
+        "growth",
+        "value",
+      ]);
+      expect(day.source).toBe("live");
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it("throws when too few personas succeed (below quorum)", async () => {

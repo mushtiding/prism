@@ -670,6 +670,14 @@ button {
   bottom: 22px;
   z-index: 5;
 }
+.walker--unavailable {
+  cursor: not-allowed;
+  filter: grayscale(0.85);
+  opacity: 0.42;
+}
+.walker--unavailable:hover {
+  bottom: 14px;
+}
 .walker__sprite {
   display: inline-block;
   transform-origin: center bottom; /* inline transform sets scaleX (facing) */
@@ -754,6 +762,20 @@ button {
 }
 .persona-card--hi .petscreen {
   border-color: color-mix(in srgb, var(--accent) 60%, var(--line-strong));
+}
+.persona-card--unavailable {
+  cursor: not-allowed;
+  filter: grayscale(0.75);
+  opacity: 0.58;
+}
+.persona-card--unavailable:hover {
+  transform: none;
+  border-color: var(--line);
+  background: var(--bg-elev);
+  box-shadow: none;
+}
+.persona-card--unavailable:hover::before {
+  opacity: 0.55;
 }
 .persona-card__charname {
   font-family: var(--font-mono);

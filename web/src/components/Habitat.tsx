@@ -28,10 +28,12 @@ const PHASE: Record<PersonaId, number> = {
  */
 export function Habitat({
   selected,
+  available,
   onSelect,
   onHover,
 }: {
   selected: PersonaId | null;
+  available: ReadonlySet<PersonaId>;
   onSelect: (id: PersonaId) => void;
   onHover: (id: PersonaId | null) => void;
 }) {
@@ -89,17 +91,19 @@ export function Habitat({
       <div className="habitat__ground" />
       {walkers.map((w) => {
         const style = PERSONA_STYLE[w.id];
+        const isAvailable = available.has(w.id);
         const isSel = selected === w.id;
         return (
           <button
             key={w.id}
-            className={`walker${isSel ? " walker--selected" : ""}`}
+            className={`walker${isSel ? " walker--selected" : ""}${isAvailable ? "" : " walker--unavailable"}`}
             style={{ left: `${w.x * 100}%` }}
+            disabled={!isAvailable}
             onClick={() => onSelect(w.id)}
-            onMouseEnter={() => onHover(w.id)}
-            onMouseLeave={() => onHover(null)}
-            title={`${style.charName} · ${style.short}`}
-            aria-label={`${style.charName}, the ${style.short} lens`}
+            onMouseEnter={() => isAvailable && onHover(w.id)}
+            onMouseLeave={() => isAvailable && onHover(null)}
+            title={`${style.charName} · ${style.short}${isAvailable ? "" : " · unavailable today"}`}
+            aria-label={`${style.charName}, the ${style.short} lens${isAvailable ? "" : ", unavailable today"}`}
           >
             <span
               className={`walker__sprite${w.moving ? " walker__sprite--step" : ""}`}

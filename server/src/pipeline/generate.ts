@@ -27,7 +27,9 @@ import { buildPovSystem, buildPovUser } from "./prompts.js";
 // Minimum personas that must succeed for a day to be publishable. Below this
 // the divergence signal is too thin to be meaningful, so we fall back to sample.
 const MIN_PERSONAS_FOR_DAY = 3;
-const PERSONA_QUORUM_GRACE_MS = 250;
+export const PERSONA_QUORUM_GRACE_MS = 60_000;
+export const POV_RETRY_BASE_DELAY_MS = 2_000;
+const MAX_POV_ATTEMPTS = 3;
 
 interface RawPov {
   text: string;
@@ -60,11 +62,20 @@ function formatReasons(reasons: string[]): string {
   return reasons.length > 0 ? reasons.join("; ") : "unknown reason";
 }
 
+function wait(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
 type SettledPov =
   | { index: number; status: "fulfilled"; value: PersonaPOV }
   | { index: number; status: "rejected"; reason: unknown };
 
 type QuorumTimeout = { status: "quorum-timeout" };
+
+interface QuorumDeadline {
+  cancel: () => void;
+  promise: Promise<QuorumTimeout>;
+}
 
 function settlePov(
   llm: LlmClient,
@@ -77,13 +88,21 @@ function settlePov(
   );
 }
 
-function quorumTimeout(): Promise<QuorumTimeout> {
-  return new Promise((resolve) => {
-    setTimeout(() => resolve({ status: "quorum-timeout" }), PERSONA_QUORUM_GRACE_MS);
+function createQuorumDeadline(): QuorumDeadline {
+  let timer: ReturnType<typeof setTimeout>;
+  const promise = new Promise<QuorumTimeout>((resolve) => {
+    timer = setTimeout(
+      () => resolve({ status: "quorum-timeout" }),
+      PERSONA_QUORUM_GRACE_MS,
+    );
   });
+  return {
+    promise,
+    cancel: () => clearTimeout(timer),
+  };
 }
 
-/** Generate one persona's POV, retrying once on guardrail failure. */
+/** Generate one persona's POV, retrying compactly on guardrail failure. */
 async function generatePov(
   llm: LlmClient,
   personaIndex: number,
@@ -94,22 +113,37 @@ async function generatePov(
   const userMsg = buildPovUser(keyPoints);
   let lastErr = "";
 
-  for (let attempt = 0; attempt < 2; attempt++) {
+  for (let attempt = 0; attempt < MAX_POV_ATTEMPTS; attempt++) {
     const sys =
       attempt === 0
         ? buildPovSystem(persona)
-        : `${buildPovSystem(persona)}\n\nYour previous attempt failed: ${lastErr}. Fix it and stay under the word limit.`;
-    const raw = await llm.generate(
-      [
-        { role: "system", content: sys },
-        { role: "user", content: userMsg },
-      ],
-      {
-        maxTokens: 1400,
-        label: `${persona.name} attempt ${attempt + 1}`,
-        responseFormat: POV_RESPONSE_FORMAT,
-      },
-    );
+        : `${buildPovSystem(persona)}
+
+Your previous attempt failed: ${lastErr}
+Return the complete corrected JSON object now. Keep text under 120 words and each rationale under 30 words. Include exactly one stance for each of these ids: ${validIds.join(", ")}. Use double quotes for every JSON key and string delimiter. No prose before or after the JSON.`;
+    let raw: string;
+    try {
+      raw = await llm.generate(
+        [
+          { role: "system", content: sys },
+          { role: "user", content: userMsg },
+        ],
+        {
+          maxTokens: 1400,
+          label: `${persona.name} attempt ${attempt + 1}`,
+          responseFormat: POV_RESPONSE_FORMAT,
+        },
+      );
+    } catch (err) {
+      lastErr = `model request failed: ${err instanceof Error ? err.message : String(err)}`;
+      const hasRetry = attempt + 1 < MAX_POV_ATTEMPTS;
+      const retryDelayMs = POV_RETRY_BASE_DELAY_MS * (attempt + 1);
+      logEvent(
+        `${persona.name} attempt ${attempt + 1} failed: ${lastErr}${hasRetry ? `; retrying in ${retryDelayMs}ms` : ""}`,
+      );
+      if (hasRetry) await wait(retryDelayMs);
+      continue;
+    }
 
     let parsed: RawPov;
     try {
@@ -177,6 +211,7 @@ async function collectPersonaPovs(
   const pending = new Map<number, Promise<SettledPov>>();
   const povs: Array<{ index: number; pov: PersonaPOV }> = [];
   const failures: string[] = [];
+  let quorumDeadline: QuorumDeadline | null = null;
 
   for (let i = 0; i < PERSONA_LIST.length; i++) {
     pending.set(i, settlePov(llm, i, keyPoints));
@@ -187,7 +222,13 @@ async function collectPersonaPovs(
       ...pending.values(),
     ];
     if (povs.length >= MIN_PERSONAS_FOR_DAY) {
-      racers.push(quorumTimeout());
+      if (!quorumDeadline) {
+        quorumDeadline = createQuorumDeadline();
+        logEvent(
+          `persona quorum reached: waiting up to ${PERSONA_QUORUM_GRACE_MS / 1000}s for ${pending.size} remaining lens${pending.size === 1 ? "" : "es"}`,
+        );
+      }
+      racers.push(quorumDeadline.promise);
     }
 
     const result = await Promise.race(racers);
@@ -196,7 +237,7 @@ async function collectPersonaPovs(
         .map((i) => PERSONA_LIST[i].name)
         .join(", ");
       logEvent(
-        `persona quorum reached: ${povs.length}/${PERSONA_LIST.length} succeeded; publishing without waiting for ${pendingNames}`,
+        `persona quorum grace expired: ${povs.length}/${PERSONA_LIST.length} succeeded; publishing without ${pendingNames}`,
       );
       break;
     }
@@ -210,6 +251,8 @@ async function collectPersonaPovs(
       logEvent(detail);
     }
   }
+
+  quorumDeadline?.cancel();
 
   logEvent(`persona quorum: ${povs.length}/${PERSONA_LIST.length} succeeded`);
   if (povs.length < MIN_PERSONAS_FOR_DAY) {

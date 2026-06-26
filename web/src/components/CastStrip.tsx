@@ -6,13 +6,15 @@ import { PixelPet } from "./PixelPet";
 import { Habitat } from "./Habitat";
 
 /** Average a persona's conviction across the day's key points → overall lean. */
-function dailyLean(day: DayContent, id: PersonaId): number {
+function dailyLean(day: DayContent, id: PersonaId): number | null {
   const pov = day.povs.find((p) => p.personaId === id);
-  if (!pov || pov.stances.length === 0) return 0;
+  if (!pov) return null;
+  if (pov.stances.length === 0) return 0;
   return pov.stances.reduce((a, s) => a + s.score, 0) / pov.stances.length;
 }
 
-function leanWord(lean: number): string {
+function leanWord(lean: number | null): string {
+  if (lean === null) return "unavailable today";
   if (lean > 0.5) return "leans bullish";
   if (lean < -0.5) return "leans bearish";
   return "mixed / neutral";
@@ -34,13 +36,20 @@ export function CastStrip({
 }) {
   // Which persona is currently highlighted (by pet click or card hover).
   const [highlight, setHighlight] = useState<PersonaId | null>(null);
+  const available = new Set(day.povs.map((pov) => pov.personaId));
+  const hasEveryLens = available.size === PERSONA_IDS.length;
 
   return (
     <section className="cast">
-      <div className="section-label">The cast · five lenses on today</div>
+      <div className="section-label">
+        {hasEveryLens
+          ? "The cast · five lenses on today"
+          : `The cast · ${available.size} of five lenses available today`}
+      </div>
 
       <Habitat
         selected={highlight}
+        available={available}
         onSelect={(id) => {
           setHighlight(id);
           onPick(id);
@@ -54,17 +63,19 @@ export function CastStrip({
           if (!def) return null;
           const style = PERSONA_STYLE[id];
           const lean = dailyLean(day, id);
+          const isAvailable = available.has(id);
           const isHi = highlight === id;
           return (
             <button
-              className={`persona-card${isHi ? " persona-card--hi" : ""}`}
+              className={`persona-card${isHi ? " persona-card--hi" : ""}${isAvailable ? "" : " persona-card--unavailable"}`}
               key={id}
               style={
                 { "--accent": style.color } as React.CSSProperties
               }
+              disabled={!isAvailable}
               onClick={() => onPick(id)}
-              onMouseEnter={() => setHighlight(id)}
-              onMouseLeave={() => setHighlight(null)}
+              onMouseEnter={() => isAvailable && setHighlight(id)}
+              onMouseLeave={() => isAvailable && setHighlight(null)}
             >
               <div className="persona-card__top">
                 <span className="petscreen">
@@ -79,7 +90,9 @@ export function CastStrip({
               </div>
               <div className="persona-card__name">{def.name}</div>
               <div className="persona-card__world">{def.worldview}</div>
-              <span className="persona-card__cta">Read today's lens →</span>
+              <span className="persona-card__cta">
+                {isAvailable ? "Read today's lens →" : "Lens unavailable today"}
+              </span>
             </button>
           );
         })}
