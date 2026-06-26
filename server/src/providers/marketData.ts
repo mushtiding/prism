@@ -134,7 +134,7 @@ function mover(m: AvMover): Quote {
 }
 
 function mapNewsFeed(feed: AvNewsItem[]): NewsItem[] {
-  return feed.slice(0, 12).map((n) => ({
+  return feed.slice(0, 40).map((n) => ({
     title: n.title,
     summary: n.summary,
     source: { title: n.title, publisher: n.source, url: n.url },
@@ -150,6 +150,22 @@ function parseAlphaTime(raw: string | undefined): string | undefined {
   if (!m) return undefined;
   const [, yyyy, mm, dd, hh, min, ss = "00"] = m;
   return `${yyyy}-${mm}-${dd}T${hh}:${min}:${ss}Z`;
+}
+
+function mergeNews(...groups: NewsItem[][]): NewsItem[] {
+  const seen = new Set<string>();
+  const merged: NewsItem[] = [];
+
+  for (const group of groups) {
+    for (const item of group) {
+      const key = item.source.url || item.title;
+      if (!key || seen.has(key)) continue;
+      seen.add(key);
+      merged.push(item);
+    }
+  }
+
+  return merged;
 }
 
 /** Citable headlines synthesized from quotes/movers when NEWS_SENTIMENT is unavailable. */
@@ -223,6 +239,7 @@ async function fetchNews(
 ): Promise<NewsItem[]> {
   const since = newsWindowStart(tradingDay);
   const timeFrom = avNewsTimeFrom(tradingDay);
+  const alphaNews: NewsItem[] = [];
   const attempts: Array<{ label: string; params: Record<string, string> }> = [
     {
       label: "NEWS_SENTIMENT tickers",
@@ -255,8 +272,12 @@ async function fetchNews(
         attempt.label,
       );
       const mapped = mapNewsFeed(news.feed ?? []);
-      if (mapped.length > 0) return mapped;
-      logEvent(`${attempt.label} returned no articles, trying next…`);
+      if (mapped.length > 0) {
+        alphaNews.push(...mapped);
+        if (alphaNews.length >= 40) break;
+      } else {
+        logEvent(`${attempt.label} returned no articles, trying next…`);
+      }
     } catch (err) {
       logEvent(`${attempt.label} failed: ${err}`);
     }
@@ -265,13 +286,15 @@ async function fetchNews(
 
   const yahoo = await fetchYahooHeadlines(INDEX_SYMBOLS, {
     since,
-    limit: 12,
+    limit: 40,
   });
-  if (yahoo.length > 0) {
+
+  if (alphaNews.length > 0 || yahoo.length > 0) {
+    const merged = mergeNews(alphaNews, yahoo).slice(0, 60);
     logEvent(
-      `using Yahoo Finance headlines as news fallback (${yahoo.length} items)`,
+      `curation news pool · Alpha Vantage ${alphaNews.length} + Yahoo RSS ${yahoo.length} → ${merged.length} items`,
     );
-    return yahoo;
+    return merged;
   }
 
   const fallback = fallbackNewsFromMarket(indexQuotes, topGainers, topLosers);

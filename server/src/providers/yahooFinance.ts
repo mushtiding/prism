@@ -170,12 +170,16 @@ export async function fetchYahooHeadlines(
     const batch = await fetchHeadlines(symbol, options.since);
     for (const item of batch) {
       if (!news.some((n) => n.title === item.title)) news.push(item);
-      if (news.length >= limit) break;
     }
-    if (news.length >= limit) break;
   }
 
-  return news.slice(0, limit);
+  return news
+    .sort((a, b) => {
+      const aTime = a.publishedAt ? Date.parse(a.publishedAt) : 0;
+      const bTime = b.publishedAt ? Date.parse(b.publishedAt) : 0;
+      return bTime - aTime;
+    })
+    .slice(0, limit);
 }
 
 /** Keyless US market snapshot via Yahoo Finance chart + RSS headlines. */

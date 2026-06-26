@@ -16,10 +16,52 @@ const SNAPSHOT: MarketSnapshot = {
   topLosers: [],
   news: [
     {
-      title: "Index rose",
-      summary: "markets up",
-      source: { title: "Index rose", publisher: "Reuters", url: "https://r.com" },
-      tickers: ["SPY"],
+      title: "Stocks rise as softer inflation lifts rate-cut expectations",
+      summary:
+        "Wall Street indexes rose after inflation data came in cooler than expected and Treasury yields moved lower.",
+      source: {
+        title: "Stocks rise as softer inflation lifts rate-cut expectations",
+        publisher: "Reuters",
+        url: "https://reuters.com/markets/us/stocks-rise-inflation",
+      },
+      tickers: ["SPY", "QQQ"],
+      publishedAt: "2026-06-09T20:30:00Z",
+    },
+    {
+      title: "Treasury yields fall after jobs data points to slower hiring",
+      summary:
+        "Government bond yields declined as investors weighed softer employment data and the path for Federal Reserve rates.",
+      source: {
+        title: "Treasury yields fall after jobs data points to slower hiring",
+        publisher: "Bloomberg",
+        url: "https://bloomberg.com/markets/treasury-yields-jobs",
+      },
+      tickers: [],
+      publishedAt: "2026-06-09T19:00:00Z",
+    },
+    {
+      title: "Chip stocks lift Nasdaq as AI spending remains in focus",
+      summary:
+        "Semiconductor shares helped the Nasdaq outperform as investors focused on demand tied to artificial intelligence infrastructure.",
+      source: {
+        title: "Chip stocks lift Nasdaq as AI spending remains in focus",
+        publisher: "CNBC",
+        url: "https://cnbc.com/markets/chips-nasdaq-ai",
+      },
+      tickers: ["QQQ", "NVDA"],
+      publishedAt: "2026-06-09T18:00:00Z",
+    },
+    {
+      title: "Oil prices slip while traders assess global demand",
+      summary:
+        "Crude prices moved lower as traders assessed demand signals and the broader commodity backdrop.",
+      source: {
+        title: "Oil prices slip while traders assess global demand",
+        publisher: "AP News",
+        url: "https://apnews.com/markets/oil-demand",
+      },
+      tickers: [],
+      publishedAt: "2026-06-09T17:00:00Z",
     },
   ],
 };
@@ -61,7 +103,7 @@ function makeLlm(
 }
 
 describe("generateDay", () => {
-  it("does not attach weak single-stock news to index key points", () => {
+  it("filters weak single-stock pages out of curated article key points", () => {
     const keyPoints = generateNeutralBriefing({
       ...SNAPSHOT,
       news: [
@@ -78,11 +120,30 @@ describe("generateDay", () => {
       ],
     });
 
-    const qqq = keyPoints.find((kp) => kp.summary.includes("QQQ"));
+    const sourceTitles = keyPoints.flatMap((kp) => kp.sources.map((s) => s.title));
 
-    expect(qqq?.sources).toHaveLength(1);
-    expect(qqq?.sources[0].url).toContain("finance.yahoo.com/quote/QQQ");
-    expect(qqq?.detail).toContain("quote source provides the market price");
+    expect(sourceTitles).not.toContain(
+      "Price to book forward of Analog Devices, Inc. - NASDAQ:ADI",
+    );
+    expect(keyPoints[0].sources[0].url).toContain("finance.yahoo.com/quote/QQQ");
+    expect(keyPoints[0].detail).toContain("fallback key point");
+  });
+
+  it("curates article-backed key points from different publishers", () => {
+    const keyPoints = generateNeutralBriefing(SNAPSHOT);
+    const primaryPublishers = keyPoints.map((kp) => kp.sources[0].publisher);
+
+    expect(keyPoints).toHaveLength(4);
+    expect(new Set(primaryPublishers).size).toBe(4);
+    expect(primaryPublishers).toEqual(
+      expect.arrayContaining(["Reuters", "Bloomberg", "CNBC", "AP News"]),
+    );
+    expect(keyPoints.every((kp) => !kp.sources[0].url.includes("finance.yahoo.com/quote/"))).toBe(
+      true,
+    );
+    expect(keyPoints.some((kp) => kp.sources.some((s) => s.title === "QQQ market quote"))).toBe(
+      true,
+    );
   });
 
   it("produces a full day when all personas succeed", async () => {
@@ -111,9 +172,9 @@ describe("generateDay", () => {
     const day = await generateDay(llm, market, "2026-06-09T12:00:00.000Z");
 
     expect(day.source).toBe("live");
-    expect(day.keyPoints[0].summary).toContain("Nasdaq 100 proxy QQQ");
-    expect(day.keyPoints[0].magnitude).toBe("-1.2%");
-    expect(day.keyPoints[0].sources.some((s) => s.url.includes("finance.yahoo.com/quote/QQQ"))).toBe(
+    expect(day.keyPoints[0].summary).toContain("Stocks rise");
+    expect(day.keyPoints[0].sources[0].publisher).toBe("Reuters");
+    expect(day.keyPoints.some((kp) => kp.sources.some((s) => s.url.includes("finance.yahoo.com/quote/QQQ")))).toBe(
       true,
     );
     expect(seenSystems.every((s) => !s.includes("neutral market briefing"))).toBe(true);
