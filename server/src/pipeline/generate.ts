@@ -2,6 +2,7 @@ import {
   DISCLAIMER,
   type DayContent,
   type KeyPoint,
+  type PersonaId,
   type PersonaPOV,
   type StanceLabel,
 } from "@prism/shared";
@@ -202,6 +203,37 @@ Return the complete corrected JSON object now. Keep text under 120 words and eac
     );
   }
   throw new Error(`${persona.name} POV failed guardrails: ${lastErr}`);
+}
+
+export function generatePersonaPov(
+  llm: LlmClient,
+  personaId: PersonaId,
+  keyPoints: KeyPoint[],
+): Promise<PersonaPOV> {
+  const personaIndex = PERSONA_LIST.findIndex((persona) => persona.id === personaId);
+  if (personaIndex === -1) {
+    return Promise.reject(new Error(`Unknown persona: ${personaId}`));
+  }
+  return generatePov(llm, personaIndex, keyPoints);
+}
+
+export function mergePersonaPov(
+  day: DayContent,
+  pov: PersonaPOV,
+): DayContent {
+  const byPersona = new Map(day.povs.map((existing) => [existing.personaId, existing]));
+  byPersona.set(pov.personaId, pov);
+  const povs = PERSONA_LIST.flatMap((persona) => {
+    const current = byPersona.get(persona.id);
+    return current ? [current] : [];
+  });
+
+  return {
+    ...day,
+    povs,
+    keyPoints: withKeyPointDivergence(day.keyPoints, povs),
+    dayDivergence: computeDayDivergence(povs),
+  };
 }
 
 async function collectPersonaPovs(

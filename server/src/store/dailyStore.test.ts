@@ -1,5 +1,9 @@
-import { describe, it, expect } from "vitest";
-import { latestTradingDay } from "./dailyStore.js";
+import { describe, it, expect, vi } from "vitest";
+import {
+  latestTradingDay,
+  PersonaRetryTimeoutError,
+  withPersonaRetryTimeout,
+} from "./dailyStore.js";
 
 describe("latestTradingDay", () => {
   it("returns the prior day for a midweek date", () => {
@@ -15,5 +19,24 @@ describe("latestTradingDay", () => {
   it("returns Friday when run on a Sunday", () => {
     // Sunday 2026-06-07 -> previous session Friday 2026-06-05
     expect(latestTradingDay(new Date("2026-06-07T12:00:00Z"))).toBe("2026-06-05");
+  });
+
+  it("ends an interactive persona retry at its deadline", async () => {
+    vi.useFakeTimers();
+    try {
+      const timed = withPersonaRetryTimeout(
+        "contrarian",
+        new Promise<string>(() => undefined),
+        1_000,
+      );
+      const rejected = expect(timed).rejects.toBeInstanceOf(
+        PersonaRetryTimeoutError,
+      );
+
+      await vi.advanceTimersByTimeAsync(1_000);
+      await rejected;
+    } finally {
+      vi.useRealTimers();
+    }
   });
 });

@@ -101,7 +101,15 @@ export default function App() {
       {view === "today" && (
         <>
           <Hero day={today} />
-          <DayBody day={today} defs={defs} onPick={setActive} />
+          <DayBody
+            day={today}
+            defs={defs}
+            onPick={setActive}
+            onRetry={async (id, signal) => {
+              const updated = await api.retryLatestPersona(id, signal);
+              setToday(updated);
+            }}
+          />
         </>
       )}
 
@@ -133,10 +141,12 @@ function DayBody({
   day,
   defs,
   onPick,
+  onRetry,
 }: {
   day: DayContent;
   defs: PersonaDef[];
   onPick: (id: PersonaId) => void;
+  onRetry?: (id: PersonaId, signal: AbortSignal) => Promise<void>;
 }) {
   return (
     <>
@@ -148,7 +158,7 @@ function DayBody({
           <KeyPointCard key={kp.id} keyPoint={kp} povs={day.povs} />
         ))}
       </section>
-      <CastStrip day={day} defs={defs} onPick={onPick} />
+      <CastStrip day={day} defs={defs} onPick={onPick} onRetry={onRetry} />
     </>
   );
 }

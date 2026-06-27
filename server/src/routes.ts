@@ -1,8 +1,13 @@
 import { Router } from "express";
 import type { HealthStatus } from "@prism/shared";
 import { config, isLiveMode } from "./config.js";
-import { PERSONA_LIST } from "./domain/personas.js";
-import { getDay, latestTradingDay } from "./store/dailyStore.js";
+import { PERSONAS, PERSONA_LIST } from "./domain/personas.js";
+import {
+  getDay,
+  latestTradingDay,
+  PersonaRetryTimeoutError,
+  retryMissingPersona,
+} from "./store/dailyStore.js";
 import {
   loadTimeMachineCatalog,
   loadTimeMachineDay,
@@ -31,6 +36,25 @@ router.get("/day/latest", async (_req, res, next) => {
     const date = latestTradingDay(now);
     res.json(await getDay(date, now));
   } catch (err) {
+    next(err);
+  }
+});
+
+router.post("/day/latest/personas/:personaId/retry", async (req, res, next) => {
+  const personaId = req.params.personaId;
+  if (!Object.hasOwn(PERSONAS, personaId)) {
+    res.status(400).json({ error: "unknown persona" });
+    return;
+  }
+
+  try {
+    const cacheKey = latestTradingDay(new Date());
+    res.json(await retryMissingPersona(cacheKey, personaId as keyof typeof PERSONAS));
+  } catch (err) {
+    if (err instanceof PersonaRetryTimeoutError) {
+      res.status(504).json({ error: "persona retry timed out" });
+      return;
+    }
     next(err);
   }
 });

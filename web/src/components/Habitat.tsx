@@ -102,8 +102,8 @@ export function Habitat({
             onClick={() => onSelect(w.id)}
             onMouseEnter={() => isAvailable && onHover(w.id)}
             onMouseLeave={() => isAvailable && onHover(null)}
-            title={`${style.charName} · ${style.short}${isAvailable ? "" : " · unavailable today"}`}
-            aria-label={`${style.charName}, the ${style.short} lens${isAvailable ? "" : ", unavailable today"}`}
+            title={`${style.charName} · ${style.short}${isAvailable ? "" : " · unavailable"}`}
+            aria-label={`${style.charName}, the ${style.short} lens${isAvailable ? "" : ", unavailable"}`}
           >
             <span
               className={`walker__sprite${w.moving ? " walker__sprite--step" : ""}`}

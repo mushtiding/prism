@@ -1,6 +1,7 @@
 import { describe, it, expect, vi } from "vitest";
 import {
   generateDay,
+  mergePersonaPov,
   PERSONA_QUORUM_GRACE_MS,
   POV_RETRY_BASE_DELAY_MS,
 } from "./generate.js";
@@ -162,6 +163,43 @@ describe("generateDay", () => {
     expect(day.keyPoints).toHaveLength(4);
     expect(day.povs).toHaveLength(5);
     expect(day.dayDivergence.score).toBeGreaterThanOrEqual(0);
+  });
+
+  it("merges a recovered persona in canonical order and recomputes divergence", async () => {
+    const llm = makeLlm(() => validPov());
+    const full = await generateDay(llm, market, "2026-06-09T12:00:00.000Z");
+    const recoveredBase = full.povs.find((pov) => pov.personaId === "growth");
+    expect(recoveredBase).toBeDefined();
+    const recovered = {
+      ...recoveredBase!,
+      stances: recoveredBase!.stances.map((stance) => ({
+        ...stance,
+        label: "bearish" as const,
+        score: -2,
+      })),
+    };
+
+    const partialPovs = full.povs.filter((pov) => pov.personaId !== "growth");
+    const partial = {
+      ...full,
+      povs: partialPovs,
+      keyPoints: full.keyPoints.map((keyPoint) => ({
+        ...keyPoint,
+        divergence: { ...keyPoint.divergence, score: 0 },
+      })),
+    };
+    const merged = mergePersonaPov(partial, recovered);
+
+    expect(merged.povs.map((pov) => pov.personaId)).toEqual([
+      "momentum",
+      "growth",
+      "value",
+      "macro",
+      "contrarian",
+    ]);
+    expect(merged.keyPoints.some((keyPoint) => keyPoint.divergence.score > 0)).toBe(
+      true,
+    );
   });
 
   it("builds deterministic neutral key points without calling the LLM for the briefing", async () => {

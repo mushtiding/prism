@@ -764,9 +764,12 @@ button {
   border-color: color-mix(in srgb, var(--accent) 60%, var(--line-strong));
 }
 .persona-card--unavailable {
-  cursor: not-allowed;
+  cursor: default;
   filter: grayscale(0.75);
   opacity: 0.58;
+}
+.persona-card--waiting {
+  opacity: 0.72;
 }
 .persona-card--unavailable:hover {
   transform: none;
@@ -828,6 +831,23 @@ button {
   display: flex;
   align-items: center;
   gap: 6px;
+}
+.persona-card__retry {
+  min-height: 32px;
+  border: 1px solid var(--line-strong);
+  border-radius: 4px;
+  background: var(--bg);
+  color: var(--ink-1);
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  transition: border-color 0.2s var(--ease), background 0.2s var(--ease);
+}
+.persona-card__retry:hover {
+  border-color: var(--accent);
+  background: var(--bg-elev-2);
 }
 
 /* ---- Drawer: persona POV + definition (FR-2, FR-3) ------------------------ */
