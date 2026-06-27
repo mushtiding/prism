@@ -1,4 +1,5 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { Trash2 } from "lucide-react";
 import type {
   DayContent,
   MyLensArticleResult,
@@ -13,10 +14,73 @@ import { KeyPointCard } from "./KeyPointCard";
 
 const ARTICLE_CHAR_LIMIT = 1_500;
 const MAX_ARTICLES = 3;
+const STORAGE_KEY = "prism.my-lens.v1";
 
 interface DraftArticle {
   id: string;
   value: string;
+}
+
+interface StoredMyLensState {
+  drafts: DraftArticle[];
+  results: Record<string, MyLensArticleResult>;
+  day: DayContent | null;
+}
+
+function emptyState(): StoredMyLensState {
+  return {
+    drafts: [{ id: "my-lens-1", value: "" }],
+    results: {},
+    day: null,
+  };
+}
+
+function loadStoredState(): StoredMyLensState {
+  try {
+    const parsed = JSON.parse(window.localStorage.getItem(STORAGE_KEY) ?? "null") as
+      | Partial<StoredMyLensState>
+      | null;
+    const drafts = Array.isArray(parsed?.drafts)
+      ? parsed.drafts
+          .filter(
+            (draft): draft is DraftArticle =>
+              Boolean(
+                draft &&
+                  typeof draft.id === "string" &&
+                  typeof draft.value === "string",
+              ),
+          )
+          .slice(0, MAX_ARTICLES)
+      : [];
+    const results = Object.fromEntries(
+      Object.entries(parsed?.results ?? {}).filter(([, result]) =>
+        Boolean(
+          result &&
+            (result.status === "valid" || result.status === "invalid") &&
+            (result.inputType === "text" || result.inputType === "url"),
+        ),
+      ),
+    ) as Record<string, MyLensArticleResult>;
+    const day = parsed?.day?.kind === "myLens" ? parsed.day : null;
+    return {
+      drafts: drafts.length > 0 ? drafts : emptyState().drafts,
+      results,
+      day,
+    };
+  } catch {
+    return emptyState();
+  }
+}
+
+function nextDraftNumber(drafts: DraftArticle[]): number {
+  return (
+    Math.max(
+      0,
+      ...drafts.map((draft) =>
+        Number(draft.id.match(/^my-lens-(\d+)$/)?.[1] ?? 0),
+      ),
+    ) + 1
+  );
 }
 
 function looksLikeUrl(value: string): boolean {
@@ -24,50 +88,80 @@ function looksLikeUrl(value: string): boolean {
 }
 
 export function MyLensView({
-  day,
   defs,
   onResult,
   onPick,
 }: {
-  day: DayContent | null;
   defs: PersonaDef[];
   onResult: (day: DayContent | null) => void;
   onPick: (id: PersonaId) => void;
 }) {
-  const nextId = useRef(2);
-  const [drafts, setDrafts] = useState<DraftArticle[]>([
-    { id: "my-lens-1", value: "" },
-  ]);
-  const [results, setResults] = useState<Record<string, MyLensArticleResult>>({});
+  const [stored] = useState(loadStoredState);
+  const nextId = useRef(nextDraftNumber(stored.drafts));
+  const [drafts, setDrafts] = useState<DraftArticle[]>(stored.drafts);
+  const [results, setResults] = useState<Record<string, MyLensArticleResult>>(
+    stored.results,
+  );
+  const [day, setDay] = useState<DayContent | null>(stored.day);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [progress, setProgress] = useState<MyLensJobProgress | null>(null);
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
 
-  function invalidateAnalysis() {
-    setResults({});
-    setError(null);
-    setProgress(null);
-    onResult(null);
-  }
+  useEffect(() => {
+    onResult(day);
+    try {
+      window.localStorage.setItem(
+        STORAGE_KEY,
+        JSON.stringify({ drafts, results, day } satisfies StoredMyLensState),
+      );
+    } catch {
+      // Storage can be unavailable in privacy modes; in-memory state still works.
+    }
+  }, [day, drafts, onResult, results]);
 
   function updateDraft(id: string, value: string) {
     setDrafts((current) =>
       current.map((draft) => (draft.id === id ? { ...draft, value } : draft)),
     );
-    invalidateAnalysis();
+    setResults((current) => {
+      if (!current[id] || current[id].status === "valid") return current;
+      const next = { ...current };
+      delete next[id];
+      return next;
+    });
+    setError(null);
+    setProgress(null);
   }
 
   function addDraft() {
     if (drafts.length >= MAX_ARTICLES) return;
     const id = `my-lens-${nextId.current++}`;
     setDrafts((current) => [...current, { id, value: "" }]);
-    invalidateAnalysis();
+    setError(null);
+    setProgress(null);
   }
 
   function removeDraft(id: string) {
-    setDrafts((current) => current.filter((draft) => draft.id !== id));
-    invalidateAnalysis();
+    const removedGeneratedArticle = results[id]?.status === "valid";
+    setDrafts((current) => {
+      const next = current.filter((draft) => draft.id !== id);
+      return next.length > 0
+        ? next
+        : [{ id: `my-lens-${nextId.current++}`, value: "" }];
+    });
+    if (removedGeneratedArticle) {
+      setResults({});
+      setDay(null);
+    } else {
+      setResults((current) => {
+        const next = { ...current };
+        delete next[id];
+        return next;
+      });
+    }
+    setError(null);
+    setProgress(null);
   }
 
   async function analyze() {
@@ -78,10 +172,8 @@ export function MyLensView({
 
     setLoading(true);
     setError(null);
-    setResults({});
     setProgress({ phase: "queued", message: "Starting analysis" });
     setElapsedSeconds(0);
-    onResult(null);
     try {
       const { jobId } = await api.startMyLensAnalysis(articles);
       while (true) {
@@ -92,15 +184,22 @@ export function MyLensView({
         );
 
         if (job.status !== "running") {
-          if (job.result) {
+          if (job.status === "complete" && job.result) {
             setResults(
               Object.fromEntries(
                 job.result.articles.map((article) => [article.id, article]),
               ),
             );
-            onResult(job.result.day);
+            setDay(job.result.day);
           }
           if (job.status === "failed") {
+            if (!day && job.result) {
+              setResults(
+                Object.fromEntries(
+                  job.result.articles.map((article) => [article.id, article]),
+                ),
+              );
+            }
             throw new Error(job.error ?? "The analysis could not finish.");
           }
           break;
@@ -139,15 +238,17 @@ export function MyLensView({
                     <span className="article-input__mode mono">
                       {urlInput ? "URL" : "TEXT"}
                     </span>
-                    {drafts.length > 1 && (
+                    {(draft.value.trim() || drafts.length > 1) && (
                       <button
                         className="article-input__remove"
                         onClick={() => removeDraft(draft.id)}
                         title={`Remove article ${index + 1}`}
                         aria-label={`Remove article ${index + 1}`}
+                        data-testid={`remove-${draft.id}`}
                         type="button"
+                        disabled={loading}
                       >
-                        ×
+                        <Trash2 size={14} strokeWidth={1.8} aria-hidden="true" />
                       </button>
                     )}
                   </div>
@@ -159,6 +260,7 @@ export function MyLensView({
                   placeholder="Paste a finance article or URL"
                   rows={5}
                   disabled={loading}
+                  readOnly={result?.status === "valid"}
                 />
                 <div className="article-input__foot">
                   <span className="article-input__count mono">

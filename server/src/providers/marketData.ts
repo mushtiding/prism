@@ -13,6 +13,8 @@ export interface Quote {
 export interface NewsItem {
   title: string;
   summary: string;
+  /** Structured takeaways read from the publisher's article page. */
+  highlights?: string[];
   source: Source;
   tickers: string[];
   /** ISO timestamp when the provider exposes one. Used to prefer recent items. */

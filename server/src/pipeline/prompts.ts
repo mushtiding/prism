@@ -108,8 +108,12 @@ export function buildPovUser(
     "Copy these ids exactly into stances. Do not shorten, rename, or invent ids.",
     "",
     ...keyPoints.map(
-      (kp) =>
-        `${kp.id}: ${kp.summary}${kp.magnitude ? ` (${kp.magnitude})` : ""}\n   ${kp.detail}`,
+      (kp) => {
+        const highlights = kp.highlights?.length
+          ? `\n   Publisher takeaways:\n${kp.highlights.map((point) => `   - ${point}`).join("\n")}`
+          : "";
+        return `${kp.id}: ${kp.summary}${kp.magnitude ? ` (${kp.magnitude})` : ""}${highlights}\n   ${kp.detail}`;
+      },
     ),
   ].join("\n");
 }

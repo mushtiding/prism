@@ -155,6 +155,28 @@ describe("generateDay", () => {
     );
   });
 
+  it("carries publisher highlights into the selected key point", () => {
+    const keyPoints = generateNeutralBriefing({
+      ...SNAPSHOT,
+      news: SNAPSHOT.news.map((item, index) =>
+        index === 0
+          ? {
+              ...item,
+              highlights: [
+                "The S&P 500 rose after inflation data was released.",
+                "Treasury yields moved lower during the session.",
+                "Investors increased expectations for rate cuts.",
+              ],
+            }
+          : item,
+      ),
+    });
+
+    expect(keyPoints[0].highlights).toContain(
+      "Treasury yields moved lower during the session.",
+    );
+  });
+
   it("produces a full day when all personas succeed", async () => {
     const llm: LlmClient = {
       async generate(messages: LlmMessage[]): Promise<string> {
@@ -253,6 +275,37 @@ describe("generateDay", () => {
       'Required keyPointId values, in this exact order: ["kp1", "kp2", "kp3", "kp4"]',
     );
     expect(userPrompts[0]).toContain("Do not shorten, rename, or invent ids.");
+  });
+
+  it("includes publisher takeaways in persona prompts", async () => {
+    const userPrompts: string[] = [];
+    const highlightedMarket: MarketDataProvider = {
+      fetchSnapshot: async () => ({
+        ...SNAPSHOT,
+        news: SNAPSHOT.news.map((item, index) =>
+          index === 0
+            ? {
+                ...item,
+                highlights: [
+                  "OpenAI may delay its IPO until next year.",
+                  "The semiconductor ETF fell during the week.",
+                ],
+              }
+            : item,
+        ),
+      }),
+    };
+    const llm: LlmClient = {
+      async generate(messages: LlmMessage[]): Promise<string> {
+        userPrompts.push(messages[1]?.content ?? "");
+        return validPov(keyPointIdsFromPrompt(messages[1]?.content ?? ""));
+      },
+    };
+
+    await generateDay(llm, highlightedMarket, "2026-06-26T12:00:00.000Z");
+
+    expect(userPrompts[0]).toContain("Publisher takeaways:");
+    expect(userPrompts[0]).toContain("OpenAI may delay its IPO until next year.");
   });
 
   it("retries when a persona model returns malformed JSON", async () => {

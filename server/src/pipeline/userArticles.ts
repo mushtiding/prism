@@ -134,15 +134,23 @@ export async function prepareMyLensArticles(
       });
       const article = parsedUrl
         ? await reader(parsedUrl.toString())
-        : { title: titleFromText(raw, index), text: raw, url: undefined };
+        : {
+            title: titleFromText(raw, index),
+            text: raw,
+            url: undefined,
+            highlights: [],
+          };
       onProgress?.({
         phase: "validating",
         message: `Checking finance relevance · article ${index + 1} of ${inputs.length}`,
         completed: index,
         total: inputs.length,
       });
+      const highlights = article.highlights?.slice(0, 5) ?? [];
       const preview = truncateArticle(
-        parsedUrl ? `${article.title}. ${article.text}` : article.text,
+        parsedUrl
+          ? `${article.title}. ${highlights.join(" ")} ${article.text}`
+          : article.text,
       );
       const title = normalizeText(article.title).slice(0, 180);
 
@@ -170,7 +178,8 @@ export async function prepareMyLensArticles(
       keyPoints.push({
         id: `article-${index + 1}`,
         summary: title,
-        detail: preview,
+        detail: highlights.length > 0 ? "" : preview,
+        highlights: highlights.length > 0 ? highlights : undefined,
         sources: article.url
           ? [
               {

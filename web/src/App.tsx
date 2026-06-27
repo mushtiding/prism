@@ -133,7 +133,6 @@ export default function App() {
 
       <div hidden={view !== "myLens"}>
         <MyLensView
-          day={myLensDay}
           defs={defs}
           onResult={setMyLensDay}
           onPick={setActive}

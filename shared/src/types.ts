@@ -50,6 +50,8 @@ export interface KeyPoint {
   summary: string;
   /** Expandable underlying detail (FR-6). */
   detail: string;
+  /** Publisher-provided summary bullets, when the article exposes them. */
+  highlights?: string[];
   /** e.g. "+9% after hours". Optional. */
   magnitude?: string;
   sources: Source[];

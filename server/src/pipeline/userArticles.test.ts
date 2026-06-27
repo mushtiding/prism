@@ -60,6 +60,10 @@ describe("My Lens article preparation", () => {
         title: "Stocks rally after earnings",
         text: `Investors pushed the stock market higher after earnings. ${"Market detail. ".repeat(200)}`,
         url: "https://example.com/markets",
+        highlights: [
+          "The Nasdaq rose after a major earnings report.",
+          "Treasury yields moved lower during the session.",
+        ],
       }),
     );
 
@@ -75,6 +79,9 @@ describe("My Lens article preparation", () => {
       publisher: "example.com",
       url: "https://example.com/markets",
     });
+    expect(prepared.keyPoints[0].highlights).toContain(
+      "Treasury yields moved lower during the session.",
+    );
   });
 
   it("labels invalid entries while analyzing valid entries", async () => {

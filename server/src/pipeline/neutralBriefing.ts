@@ -451,11 +451,13 @@ function summaryForArticle(item: NewsItem): string {
 
 function detailForArticle(item: NewsItem, quote: Quote | null): string {
   const pieces: string[] = [];
-  const summary = neutralizeLoadedLanguage(sentence(item.summary));
-  if (summary && normalizeKey(summary) !== normalizeKey(item.title)) {
-    pieces.push(withPeriod(summary));
-  } else {
-    pieces.push(withPeriod(`The source headline was "${headline(item.title)}"`));
+  if (!item.highlights?.length) {
+    const summary = neutralizeLoadedLanguage(sentence(item.summary));
+    if (summary && normalizeKey(summary) !== normalizeKey(item.title)) {
+      pieces.push(withPeriod(summary));
+    } else {
+      pieces.push(withPeriod(`The source headline was "${headline(item.title)}"`));
+    }
   }
 
   if (item.publishedAt) {
@@ -470,11 +472,16 @@ function detailForArticle(item: NewsItem, quote: Quote | null): string {
 
 function keyPointFromArticle(candidate: ArticleCandidate, i: number): KeyPoint {
   const { item, quote } = candidate;
+  const highlights = item.highlights
+    ?.map((point) => withPeriod(neutralizeLoadedLanguage(normalizeSpaces(point))))
+    .filter(Boolean)
+    .slice(0, 5);
 
   return {
     id: `kp${i + 1}`,
     summary: summaryForArticle(item),
     detail: detailForArticle(item, quote),
+    highlights: highlights?.length ? highlights : undefined,
     magnitude: quote?.changePercent,
     sources: [item.source, ...(quote ? [quoteSource(quote.symbol)] : [])],
     divergence: blankDivergence(),

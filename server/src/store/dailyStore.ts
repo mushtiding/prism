@@ -7,6 +7,7 @@ import { clearPipeline, logEvent, recordDayOutcome, recordDayStarted, recordFall
 import { OpenRouterClient } from "../providers/llm.js";
 import { AlphaVantageProvider } from "../providers/marketData.js";
 import { ResilientMarketDataProvider } from "../providers/resilientMarketData.js";
+import { ArticleSummaryMarketDataProvider } from "../providers/articleSummaryMarketData.js";
 import {
   generateDay,
   generatePersonaPov,
@@ -138,8 +139,10 @@ export async function getDay(date: string, now: Date): Promise<DayContent> {
 
       setPipeline("daily generation", date);
       const llm = new OpenRouterClient(config.openRouterApiKey!);
-      const market = new ResilientMarketDataProvider(
-        new AlphaVantageProvider(config.alphaVantageApiKey!),
+      const market = new ArticleSummaryMarketDataProvider(
+        new ResilientMarketDataProvider(
+          new AlphaVantageProvider(config.alphaVantageApiKey!),
+        ),
       );
       const day = await generateDay(llm, market, now.toISOString(), date);
       setPipeline("cache write", date);

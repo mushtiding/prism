@@ -72,7 +72,16 @@ export function KeyPointCard({
       <div className="kp__detail">
         <div className="kp__detail-inner">
           <div className="kp__detail-pad">
-            <p className="kp__detail-text">{keyPoint.detail}</p>
+            {keyPoint.highlights && keyPoint.highlights.length > 0 && (
+              <ul className="kp__highlights">
+                {keyPoint.highlights.map((highlight, index) => (
+                  <li key={index}>{highlight}</li>
+                ))}
+              </ul>
+            )}
+            {keyPoint.detail && (
+              <p className="kp__detail-text">{keyPoint.detail}</p>
+            )}
 
             {keyPoint.sources.length > 0 && (
               <div className="sources">

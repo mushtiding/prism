@@ -50,10 +50,14 @@ Relevant files:
 
 - `web/src/components/MyLensView.tsx`: one-to-three article editor, URL/text
   detection, 1,500-character indicator, per-entry validation status, and
-  results rendering.
+  results rendering. Drafts, validation results, and generated analysis persist
+  in local storage until the user removes a generated article.
 - `server/src/providers/articleReader.ts`: guarded HTTP(S) reader. It blocks
   credentials, localhost, private/non-public IPs, and validates every redirect;
-  downloads at most 512 KB and parses HTML with `node-html-parser`.
+  downloads at most 512 KB, parses HTML with `node-html-parser`, and preserves
+  publisher-provided summary/takeaway bullets when available.
+- `server/src/providers/articleSummaryMarketData.ts`: hydrates the articles
+  selected for Today with publisher takeaway bullets before personas run.
 - `server/src/pipeline/userArticles.ts`: truncation, deterministic finance-topic
   validation, key-point construction, and persona analysis.
 - `server/src/store/myLensJobs.ts`: in-memory 30-minute jobs, progress state,
@@ -78,8 +82,8 @@ specific rate-limit message instead of a generic internal error.
   the 0-to-1 index and interprets the current value.
 - Missing persona cards never masquerade as neutral. Daily cards expose Retry;
   My Lens partial results currently show unavailable lenses without retry.
-- My Lens drafts remain mounted and survive navigation between app tabs, but
-  they are intentionally not persisted across a full page reload.
+- My Lens drafts and generated results survive app-tab navigation and full page
+  reloads. Valid generated entries are read-only until explicitly removed.
 
 ## API
 
@@ -97,7 +101,7 @@ specific rate-limit message instead of a generic internal error.
 
 At this handoff:
 
-- `npm test`: 11 files, 57 tests passed.
+- `npm test`: 12 files, 61 tests passed.
 - `npm run typecheck`: all workspaces passed.
 - `npm run build`: all workspaces passed.
 - `npm audit --omit=dev`: no production vulnerabilities.
@@ -115,9 +119,10 @@ At this handoff:
   source characters.
 - Some publishers block server-side article extraction or put useful content
   behind scripts/paywalls; those URLs return invalid/read errors.
-- My Lens results are in-memory browser state and are not restored after reload.
-- The active model can still return malformed JSON or upstream capacity errors. Retry,
-  quorum, and unavailable states keep those failures explicit. Daily persona
-  failures do not replace successfully curated live news with sample content.
+- My Lens persistence uses browser local storage and is scoped to that browser
+  profile; it does not sync between browsers or devices.
+- The active model can still return malformed JSON or upstream capacity errors.
+  Retry, quorum, and unavailable states keep those failures explicit. Daily
+  persona failures do not replace successfully curated live news with sample content.
 - Today is keyed and displayed by the server's current local calendar date;
   provider quote data may still describe the previous market session.

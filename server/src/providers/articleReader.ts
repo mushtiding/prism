@@ -10,6 +10,7 @@ export interface ReadArticle {
   title: string;
   text: string;
   url: string;
+  highlights?: string[];
 }
 
 function isPrivateIpv4(address: string): boolean {
@@ -99,7 +100,32 @@ function normalizeText(value: string): string {
   return value.replace(/\s+/g, " ").trim();
 }
 
-function extractHtml(html: string, fallbackTitle: string): { title: string; text: string } {
+function extractHighlights(root: ReturnType<typeof parse>): string[] {
+  const selectors = [
+    "ul.summary-bullets",
+    'ul[class*="summary-bullet"]',
+    '[class*="key-takeaway"] ul',
+    '[class*="keyTakeaway"] ul',
+    'ul[class*="highlights"]',
+  ];
+
+  for (const selector of selectors) {
+    for (const list of root.querySelectorAll(selector)) {
+      const items = list
+        .querySelectorAll(":scope > li")
+        .map((item) => normalizeText(item.textContent))
+        .filter((item) => item.length >= 20 && item.length <= 400);
+      const unique = [...new Set(items)];
+      if (unique.length >= 2) return unique.slice(0, 5);
+    }
+  }
+  return [];
+}
+
+export function extractArticleHtml(
+  html: string,
+  fallbackTitle: string,
+): { title: string; text: string; highlights: string[] } {
   const root = parse(html);
   for (const node of root.querySelectorAll(
     "script, style, noscript, svg, nav, footer, header, form, aside",
@@ -114,10 +140,17 @@ function extractHtml(html: string, fallbackTitle: string): { title: string; text
   );
   const content =
     root.querySelector("article") ??
+    root.querySelector('[class*="NewsArticle_body"]') ??
+    root.querySelector('[class*="article-body"]') ??
+    root.querySelector('[class*="articleBody"]') ??
     root.querySelector("main") ??
     root.querySelector("body") ??
     root;
-  return { title, text: normalizeText(content.textContent) };
+  return {
+    title,
+    text: normalizeText(content.textContent),
+    highlights: extractHighlights(content),
+  };
 }
 
 export async function readArticleUrl(input: string): Promise<ReadArticle> {
@@ -154,8 +187,8 @@ export async function readArticleUrl(input: string): Promise<ReadArticle> {
     const body = await readLimitedBody(response);
     const fallbackTitle = current.hostname.replace(/^www\./, "");
     const extracted = !contentType || contentType.includes("text/html")
-      ? extractHtml(body, fallbackTitle)
-      : { title: fallbackTitle, text: normalizeText(body) };
+      ? extractArticleHtml(body, fallbackTitle)
+      : { title: fallbackTitle, text: normalizeText(body), highlights: [] };
     return { ...extracted, url: current.toString() };
   }
 

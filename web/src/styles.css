@@ -1120,6 +1120,10 @@ button {
 .article-input textarea:focus {
   border-color: var(--line-strong);
 }
+.article-input textarea:read-only {
+  cursor: default;
+  color: var(--ink-2);
+}
 .article-input textarea::placeholder {
   color: var(--ink-4);
 }
@@ -1229,6 +1233,19 @@ button {
 }
 .my-lens__results .hero {
   margin-top: 0;
+}
+
+.kp__highlights {
+  display: grid;
+  gap: 9px;
+  margin: 0 0 16px;
+  padding-left: 20px;
+  color: var(--ink-1);
+  font-size: 14px;
+  line-height: 1.55;
+}
+.kp__highlights li::marker {
+  color: var(--ink-3);
 }
 
 .deftoggle {
