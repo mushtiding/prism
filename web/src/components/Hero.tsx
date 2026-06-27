@@ -27,11 +27,11 @@ function divergenceMeaning(
 ): string {
   switch (level) {
     case "consensus":
-      return `At ${score.toFixed(2)}, today's lenses mostly landed in the same place.`;
+      return `At ${score.toFixed(2)}, today's lenses mostly agree.`;
     case "mixed":
-      return `At ${score.toFixed(2)}, today's lenses agree on some themes but split on others.`;
+      return `At ${score.toFixed(2)}, today's lenses split on some themes.`;
     case "contested":
-      return `At ${score.toFixed(2)}, today's lenses are far apart: the same news is producing meaningfully different reads.`;
+      return `At ${score.toFixed(2)}, today's lenses read the same news very differently.`;
   }
 }
 
@@ -88,10 +88,8 @@ export function Hero({ day }: { day: DayContent }) {
               >
                 <strong>How to read it</strong>
                 <span>
-                  This measures how far apart the available persona lenses are.
-                  Zero means they agree; one means they are maximally split
-                  between bullish and bearish reads. It measures disagreement,
-                  not where the market will go.
+                  Shows how much the loaded lenses disagree. Zero means aligned;
+                  one means maximally split. It is not a market forecast.
                 </span>
                 <span>
                   <b>Today:</b> {divergenceMeaning(div.score, div.level)}{" "}

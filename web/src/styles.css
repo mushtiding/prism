@@ -330,8 +330,8 @@ button {
 }
 .hero__index-tooltip {
   position: absolute;
-  top: calc(100% + 10px);
-  left: 0;
+  top: 50%;
+  left: calc(100% + 12px);
   z-index: 20;
   width: min(340px, calc(100vw - 48px));
   padding: 14px 15px;
@@ -347,7 +347,7 @@ button {
   line-height: 1.5;
   opacity: 0;
   visibility: hidden;
-  transform: translateY(-4px);
+  transform: translate(-4px, -50%);
   transition: opacity 0.16s var(--ease), transform 0.16s var(--ease),
     visibility 0.16s var(--ease);
   pointer-events: none;
@@ -365,7 +365,7 @@ button {
 .hero__index-tooltip--open {
   opacity: 1;
   visibility: visible;
-  transform: translateY(0);
+  transform: translate(0, -50%);
 }
 .hero__read {
   max-width: 360px;
@@ -1244,6 +1244,16 @@ button {
   }
   .hero__score-num {
     font-size: 60px;
+  }
+  .hero__index-tooltip {
+    top: calc(100% + 10px);
+    left: 0;
+    transform: translateY(-4px);
+  }
+  .hero__index-help:hover + .hero__index-tooltip,
+  .hero__index-help:focus-visible + .hero__index-tooltip,
+  .hero__index-tooltip--open {
+    transform: translateY(0);
   }
 }
 @media (max-width: 520px) {
