@@ -35,13 +35,12 @@ back — API keys stay server-side, and all users see identical daily content.
 **Daily content flow:** a request for a trading day serves a dated JSON cache if
 present; on a miss it runs the pipeline once (market data → neutral briefing →
 5 persona POVs in parallel → deterministic divergence math), caches the result,
-and serves it. If API keys are missing or any call fails, it gracefully serves a
-**bundled sample day** (badged "Sample data").
+and serves it. Persona failures leave retryable unavailable lenses on the live
+briefing; failures that prevent the briefing itself use the bundled sample day.
 
 - **Market data:** Alpha Vantage (US equities).
-- **LLM:** OpenRouter via the OpenAI SDK — default
-  `nvidia/nemotron-3-ultra-550b-a55b:free` with reasoning effort. Model-agnostic
-  by design.
+- **LLM:** OpenRouter via the OpenAI SDK, defaulting to
+  `openrouter/owl-alpha`. Model-agnostic by design.
 - **Divergence:** computed deterministically from each persona's structured
   −2..+2 conviction stances — no LLM judge.
 - **Guardrails:** neutral-tone enforcement on the briefing, ≤200-word + plain

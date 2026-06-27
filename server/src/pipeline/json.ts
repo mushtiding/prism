@@ -1,7 +1,7 @@
 /**
  * Extract a JSON value from an LLM response that may wrap it in prose, markdown
- * fences, or <think> blocks. Nemotron-3 Ultra has no native structured-output
- * mode, so we parse defensively.
+ * fences, or <think> blocks. Providers vary in how strictly they honor
+ * structured-output mode, so we parse defensively.
  */
 export function extractJson<T = unknown>(raw: string): T {
   let text = raw.trim();

@@ -136,7 +136,7 @@ export function CastStrip({
                 {isAvailable
                   ? `Read ${isMyLens ? "this" : "today's"} lens →`
                   : isWaiting
-                    ? "Waiting for Nemotron"
+                    ? "Waiting for model"
                     : "Lens unavailable"}
               </span>
               {!isAvailable && !isWaiting && onRetry && (

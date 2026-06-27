@@ -22,8 +22,7 @@ commands are `npm run dev`, `npm test`, `npm run typecheck`, and
 ## Runtime
 
 - Local secrets belong only in ignored `server/.env`.
-- The active model is `nvidia/nemotron-3-ultra-550b-a55b:free` through
-  OpenRouter.
+- The active model is `openrouter/owl-alpha` through OpenRouter.
 - The OpenRouter timeout is 480 seconds; raw responses are written to
   `server/logs/openrouter-raw-responses.log` with secrets redacted.
 - Alpha Vantage is the primary market provider. Yahoo Finance provides the
@@ -34,7 +33,7 @@ commands are `npm run dev`, `npm test`, `npm run typecheck`, and
 
 1. `server/src/pipeline/neutralBriefing.ts` deterministically scores and
    curates article-backed key points. The neutral layer does not use an LLM.
-2. `server/src/pipeline/generate.ts` starts five Nemotron persona calls in
+2. `server/src/pipeline/generate.ts` starts five Owl Alpha persona calls in
    parallel. Each has compact JSON retries and provider-error backoff.
 3. At a three-persona quorum, the pipeline waits another 60 seconds for late
    lenses. Below quorum, it still caches and serves the live article briefing;
@@ -117,7 +116,7 @@ At this handoff:
 - Some publishers block server-side article extraction or put useful content
   behind scripts/paywalls; those URLs return invalid/read errors.
 - My Lens results are in-memory browser state and are not restored after reload.
-- Nemotron can still return malformed JSON or upstream capacity errors. Retry,
+- The active model can still return malformed JSON or upstream capacity errors. Retry,
   quorum, and unavailable states keep those failures explicit. Daily persona
   failures do not replace successfully curated live news with sample content.
 - Today is keyed and displayed by the server's current local calendar date;

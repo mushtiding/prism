@@ -27,7 +27,7 @@ function unique(values: string[]): string[] {
 }
 
 const defaultOpenRouterModel =
-  process.env.OPENROUTER_MODEL || "nvidia/nemotron-3-ultra-550b-a55b:free";
+  process.env.OPENROUTER_MODEL || "openrouter/owl-alpha";
 
 export const config: Config = {
   port: Number(process.env.PORT) || 8787,

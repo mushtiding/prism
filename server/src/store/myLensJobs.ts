@@ -18,10 +18,10 @@ const jobs = new Map<string, MyLensJobStatus>();
 function publicError(err: unknown): string {
   const message = err instanceof Error ? err.message : String(err);
   if (/(?:\b429\b|rate limit|free-models-per-)/i.test(message)) {
-    return "Nemotron is rate-limited right now. The article was read, but the persona lenses could not finish. Try again later.";
+    return "The active model is rate-limited right now. The article was read, but the persona lenses could not finish. Try again later.";
   }
   if (/timed out/i.test(message)) {
-    return "Nemotron did not respond in time. The article was read; try the persona analysis again.";
+    return "The active model did not respond in time. The article was read; try the persona analysis again.";
   }
   if (/personas succeeded/i.test(message)) {
     return "Too few persona lenses returned valid responses. Please try again.";
