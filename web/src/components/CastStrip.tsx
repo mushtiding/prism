@@ -42,6 +42,7 @@ export function CastStrip({
   const retryControllers = useRef(new Map<PersonaId, AbortController>());
   const available = new Set(day.povs.map((pov) => pov.personaId));
   const hasEveryLens = available.size === PERSONA_IDS.length;
+  const isMyLens = day.kind === "myLens";
 
   useEffect(() => {
     const controllers = retryControllers.current;
@@ -91,8 +92,8 @@ export function CastStrip({
     <section className="cast">
       <div className="section-label">
         {hasEveryLens
-          ? "The cast · five lenses on today"
-          : `The cast · ${available.size} of five lenses available today`}
+          ? `The cast · five lenses${isMyLens ? "" : " on today"}`
+          : `The cast · ${available.size} of five lenses available`}
       </div>
 
       <Habitat
@@ -133,7 +134,7 @@ export function CastStrip({
               <div className="persona-card__world">{def.worldview}</div>
               <span className="persona-card__cta">
                 {isAvailable
-                  ? "Read today's lens →"
+                  ? `Read ${isMyLens ? "this" : "today's"} lens →`
                   : isWaiting
                     ? "Waiting for Nemotron"
                     : "Lens unavailable"}

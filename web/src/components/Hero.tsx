@@ -24,14 +24,15 @@ function prettyDate(iso: string): string {
 function divergenceMeaning(
   score: number,
   level: DayContent["dayDivergence"]["level"],
+  subject: string,
 ): string {
   switch (level) {
     case "consensus":
-      return `At ${score.toFixed(2)}, today's lenses mostly agree.`;
+      return `At ${score.toFixed(2)}, ${subject} mostly agree.`;
     case "mixed":
-      return `At ${score.toFixed(2)}, today's lenses split on some themes.`;
+      return `At ${score.toFixed(2)}, ${subject} split on some themes.`;
     case "contested":
-      return `At ${score.toFixed(2)}, today's lenses read the same news very differently.`;
+      return `At ${score.toFixed(2)}, ${subject} read the same news very differently.`;
   }
 }
 
@@ -39,6 +40,7 @@ function divergenceMeaning(
 export function Hero({ day }: { day: DayContent }) {
   const div = day.dayDivergence;
   const [showIndexHelp, setShowIndexHelp] = useState(false);
+  const lensSubject = day.kind === "myLens" ? "these lenses" : "today's lenses";
   const loadedLensNote =
     day.povs.length === PERSONA_IDS.length
       ? "All five lenses are included."
@@ -58,7 +60,9 @@ export function Hero({ day }: { day: DayContent }) {
   return (
     <section className="hero rise">
       <div className="hero__date mono">
-        {day.kind === "timeMachine" ? day.title : prettyDate(day.date)}
+        {day.kind === "timeMachine" || day.kind === "myLens"
+          ? day.title
+          : prettyDate(day.date)}
       </div>
       <div className="hero__head">
         <div className="hero__score">
@@ -92,7 +96,8 @@ export function Hero({ day }: { day: DayContent }) {
                   one means maximally split. It is not a market forecast.
                 </span>
                 <span>
-                  <b>Today:</b> {divergenceMeaning(div.score, div.level)}{" "}
+                  <b>{day.kind === "myLens" ? "This read:" : "Today:"}</b>{" "}
+                  {divergenceMeaning(div.score, div.level, lensSubject)}{" "}
                   {loadedLensNote}
                 </span>
               </span>

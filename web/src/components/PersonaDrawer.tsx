@@ -20,10 +20,12 @@ const RISK_LABEL: Record<string, string> = {
 export function PersonaDrawer({
   def,
   pov,
+  context = "today",
   onClose,
 }: {
   def: PersonaDef;
   pov: PersonaPOV;
+  context?: "today" | "your articles";
   onClose: () => void;
 }) {
   const [showDef, setShowDef] = useState(false);
@@ -49,7 +51,7 @@ export function PersonaDrawer({
         className="drawer"
         role="dialog"
         aria-modal="true"
-        aria-label={`${def.name} — today's lens`}
+        aria-label={`${def.name} — lens on ${context}`}
       >
         <div className="drawer__bar">
           <div className="drawer__bar-left">
@@ -74,7 +76,9 @@ export function PersonaDrawer({
 
         <div className="drawer__body">
           <div className="biaschip">
-            <span className="biaschip__tag">BIAS TODAY</span>
+            <span className="biaschip__tag">
+              {context === "today" ? "BIAS TODAY" : "BIAS IN THIS READ"}
+            </span>
             {pov.activeBias}
           </div>
 
@@ -87,7 +91,7 @@ export function PersonaDrawer({
 
           <p className="lens-note">
             {def.name} is a fixed, deliberately biased archetype. Its take
-            reflects that bias on purpose — it is one way of reading the day, to
+            reflects that bias on purpose — it is one way of reading {context}, to
             be compared against the others, never followed as a recommendation.
           </p>
 

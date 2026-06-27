@@ -12,8 +12,9 @@ import { Hero } from "./components/Hero";
 import { KeyPointCard } from "./components/KeyPointCard";
 import { CastStrip } from "./components/CastStrip";
 import { PersonaDrawer } from "./components/PersonaDrawer";
+import { MyLensView } from "./components/MyLensView";
 
-type View = "today" | "timemachine";
+type View = "today" | "myLens" | "timemachine";
 
 export default function App() {
   const [view, setView] = useState<View>("today");
@@ -22,6 +23,7 @@ export default function App() {
   const [today, setToday] = useState<DayContent | null>(null);
   const [catalog, setCatalog] = useState<TimeMachineEvent[]>([]);
   const [tmDay, setTmDay] = useState<DayContent | null>(null);
+  const [myLensDay, setMyLensDay] = useState<DayContent | null>(null);
   const [active, setActive] = useState<PersonaId | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -42,7 +44,12 @@ export default function App() {
       .catch((e) => setError(String(e)));
   }, []);
 
-  const current = view === "timemachine" && tmDay ? tmDay : today;
+  const current =
+    view === "timemachine" && tmDay
+      ? tmDay
+      : view === "myLens" && myLensDay
+        ? myLensDay
+        : today;
   const activeDef = active ? defs.find((d) => d.id === active) ?? null : null;
   const activePov =
     active && current
@@ -124,12 +131,22 @@ export default function App() {
         />
       )}
 
+      <div hidden={view !== "myLens"}>
+        <MyLensView
+          day={myLensDay}
+          defs={defs}
+          onResult={setMyLensDay}
+          onPick={setActive}
+        />
+      </div>
+
       <p className="disclaimer">{DISCLAIMER}</p>
 
       {activeDef && activePov && (
         <PersonaDrawer
           def={activeDef}
           pov={activePov}
+          context={current?.kind === "myLens" ? "your articles" : "today"}
           onClose={() => setActive(null)}
         />
       )}
@@ -252,6 +269,12 @@ function Shell({
               onClick={() => setView("today")}
             >
               Today
+            </button>
+            <button
+              className={`nav-btn${view === "myLens" ? " nav-btn--active" : ""}`}
+              onClick={() => setView("myLens")}
+            >
+              My Lens
             </button>
             <button
               className={`nav-btn${

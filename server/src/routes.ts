@@ -1,5 +1,5 @@
 import { Router } from "express";
-import type { HealthStatus } from "@prism/shared";
+import type { HealthStatus, MyLensArticleInput } from "@prism/shared";
 import { config, isLiveMode } from "./config.js";
 import { PERSONAS, PERSONA_LIST } from "./domain/personas.js";
 import {
@@ -12,6 +12,12 @@ import {
   loadTimeMachineCatalog,
   loadTimeMachineDay,
 } from "./store/sampleData.js";
+import { clearPipeline } from "./logger.js";
+import { OpenRouterClient } from "./providers/llm.js";
+import {
+  analyzeMyLensArticles,
+  MAX_MY_LENS_ARTICLES,
+} from "./pipeline/userArticles.js";
 
 export const router = Router();
 
@@ -56,6 +62,43 @@ router.post("/day/latest/personas/:personaId/retry", async (req, res, next) => {
       return;
     }
     next(err);
+  }
+});
+
+router.post("/my-lens/analyze", async (req, res, next) => {
+  const articles = req.body?.articles as MyLensArticleInput[] | undefined;
+  const validShape =
+    Array.isArray(articles) &&
+    articles.length >= 1 &&
+    articles.length <= MAX_MY_LENS_ARTICLES &&
+    articles.every(
+      (article) =>
+        article &&
+        typeof article.id === "string" &&
+        article.id.length >= 1 &&
+        article.id.length <= 80 &&
+        typeof article.value === "string" &&
+        article.value.trim().length >= 1 &&
+        article.value.length <= 50_000,
+    ) &&
+    new Set(articles.map((article) => article.id)).size === articles.length;
+
+  if (!validShape) {
+    res.status(400).json({ error: "Provide one to three non-empty articles." });
+    return;
+  }
+  if (!config.openRouterApiKey) {
+    res.status(503).json({ error: "My Lens requires an OpenRouter API key." });
+    return;
+  }
+
+  try {
+    const llm = new OpenRouterClient(config.openRouterApiKey);
+    res.json(await analyzeMyLensArticles(llm, articles, new Date().toISOString()));
+  } catch (err) {
+    next(err);
+  } finally {
+    clearPipeline();
   }
 });
 

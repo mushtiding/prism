@@ -1,6 +1,8 @@
 import type {
   DayContent,
   HealthStatus,
+  MyLensArticleInput,
+  MyLensResponse,
   PersonaDef,
   PersonaId,
   TimeMachineEvent,
@@ -23,6 +25,12 @@ export const api = {
     request<DayContent>(`/api/day/latest/personas/${id}/retry`, {
       method: "POST",
       signal,
+    }),
+  analyzeMyLens: (articles: MyLensArticleInput[]) =>
+    request<MyLensResponse>("/api/my-lens/analyze", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ articles }),
     }),
   timeMachineCatalog: () => request<TimeMachineEvent[]>("/api/timemachine"),
   timeMachineDay: (id: string) => request<DayContent>(`/api/timemachine/${id}`),

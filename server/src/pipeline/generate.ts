@@ -82,19 +82,20 @@ function settlePov(
   llm: LlmClient,
   personaIndex: number,
   keyPoints: KeyPoint[],
+  briefingLabel?: string,
 ): Promise<SettledPov> {
-  return generatePov(llm, personaIndex, keyPoints).then(
+  return generatePov(llm, personaIndex, keyPoints, briefingLabel).then(
     (value) => ({ index: personaIndex, status: "fulfilled", value }),
     (reason) => ({ index: personaIndex, status: "rejected", reason }),
   );
 }
 
-function createQuorumDeadline(): QuorumDeadline {
+function createQuorumDeadline(delayMs: number): QuorumDeadline {
   let timer: ReturnType<typeof setTimeout>;
   const promise = new Promise<QuorumTimeout>((resolve) => {
     timer = setTimeout(
       () => resolve({ status: "quorum-timeout" }),
-      PERSONA_QUORUM_GRACE_MS,
+      delayMs,
     );
   });
   return {
@@ -108,10 +109,11 @@ async function generatePov(
   llm: LlmClient,
   personaIndex: number,
   keyPoints: KeyPoint[],
+  briefingLabel?: string,
 ): Promise<PersonaPOV> {
   const persona = PERSONA_LIST[personaIndex];
   const validIds = keyPoints.map((kp) => kp.id);
-  const userMsg = buildPovUser(keyPoints);
+  const userMsg = buildPovUser(keyPoints, briefingLabel);
   let lastErr = "";
 
   for (let attempt = 0; attempt < MAX_POV_ATTEMPTS; attempt++) {
@@ -236,17 +238,19 @@ export function mergePersonaPov(
   };
 }
 
-async function collectPersonaPovs(
+export async function generatePersonaPovs(
   llm: LlmClient,
   keyPoints: KeyPoint[],
+  options: { briefingLabel?: string; quorumGraceMs?: number } = {},
 ): Promise<PersonaPOV[]> {
+  const quorumGraceMs = options.quorumGraceMs ?? PERSONA_QUORUM_GRACE_MS;
   const pending = new Map<number, Promise<SettledPov>>();
   const povs: Array<{ index: number; pov: PersonaPOV }> = [];
   const failures: string[] = [];
   let quorumDeadline: QuorumDeadline | null = null;
 
   for (let i = 0; i < PERSONA_LIST.length; i++) {
-    pending.set(i, settlePov(llm, i, keyPoints));
+    pending.set(i, settlePov(llm, i, keyPoints, options.briefingLabel));
   }
 
   while (pending.size > 0) {
@@ -255,9 +259,9 @@ async function collectPersonaPovs(
     ];
     if (povs.length >= MIN_PERSONAS_FOR_DAY) {
       if (!quorumDeadline) {
-        quorumDeadline = createQuorumDeadline();
+        quorumDeadline = createQuorumDeadline(quorumGraceMs);
         logEvent(
-          `persona quorum reached: waiting up to ${PERSONA_QUORUM_GRACE_MS / 1000}s for ${pending.size} remaining lens${pending.size === 1 ? "" : "es"}`,
+          `persona quorum reached: waiting up to ${quorumGraceMs / 1000}s for ${pending.size} remaining lens${pending.size === 1 ? "" : "es"}`,
         );
       }
       racers.push(quorumDeadline.promise);
@@ -323,7 +327,7 @@ export async function generateDay(
     );
 
     setPipeline("persona POVs", "5 parallel OpenRouter calls");
-    const povs = await collectPersonaPovs(llm, briefingKeyPoints);
+    const povs = await generatePersonaPovs(llm, briefingKeyPoints);
 
     setPipeline("divergence", "deterministic scoring");
     const keyPoints = withKeyPointDivergence(briefingKeyPoints, povs);

@@ -10,8 +10,8 @@ export type DivergenceLevel = "consensus" | "mixed" | "contested";
 /** Where a day's content came from — drives the "sample data" badge. */
 export type ContentSource = "live" | "sample";
 
-/** Whether a day is the real daily briefing or a curated historical replay. */
-export type DayKind = "daily" | "timeMachine";
+/** Which Prism workflow produced this analysis. */
+export type DayKind = "daily" | "timeMachine" | "myLens";
 
 export type PersonaId =
   | "momentum"
@@ -119,6 +119,26 @@ export interface TimeMachineEvent {
   title: string;
   date: string;
   blurb: string;
+}
+
+export interface MyLensArticleInput {
+  id: string;
+  value: string;
+}
+
+export interface MyLensArticleResult {
+  id: string;
+  status: "valid" | "invalid";
+  inputType: "text" | "url";
+  title?: string;
+  preview?: string;
+  url?: string;
+  reason?: string;
+}
+
+export interface MyLensResponse {
+  articles: MyLensArticleResult[];
+  day: DayContent | null;
 }
 
 /** /api/health diagnostic payload. */
