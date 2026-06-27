@@ -36,8 +36,9 @@ commands are `npm run dev`, `npm test`, `npm run typecheck`, and
    curates article-backed key points. The neutral layer does not use an LLM.
 2. `server/src/pipeline/generate.ts` starts five Nemotron persona calls in
    parallel. Each has compact JSON retries and provider-error backoff.
-3. A day can publish at a three-persona quorum. It waits another 60 seconds for
-   late lenses before returning partial content.
+3. At a three-persona quorum, the pipeline waits another 60 seconds for late
+   lenses. Below quorum, it still caches and serves the live article briefing;
+   missing personas appear unavailable and can be retried in the app.
 4. Divergence is computed deterministically from persona stance scores.
 5. Daily content is cached under `server/cache/<requested-date>.json`.
 6. Missing daily personas are disabled in the UI and can be retried in place.
@@ -117,6 +118,7 @@ At this handoff:
   behind scripts/paywalls; those URLs return invalid/read errors.
 - My Lens results are in-memory browser state and are not restored after reload.
 - Nemotron can still return malformed JSON or upstream capacity errors. Retry,
-  quorum, and unavailable states keep those failures explicit.
+  quorum, and unavailable states keep those failures explicit. Daily persona
+  failures do not replace successfully curated live news with sample content.
 - Today is keyed and displayed by the server's current local calendar date;
   provider quote data may still describe the previous market session.

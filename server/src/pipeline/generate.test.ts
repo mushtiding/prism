@@ -335,10 +335,12 @@ describe("generateDay", () => {
       },
     };
 
-    await expect(
-      generateDay(llm, market, "2026-06-09T12:00:00.000Z"),
-    ).rejects.toThrow(/personas succeeded/);
+    const day = await generateDay(llm, market, "2026-06-09T12:00:00.000Z");
+
     expect(calls).toBe(5);
+    expect(day.source).toBe("live");
+    expect(day.keyPoints).toHaveLength(4);
+    expect(day.povs).toHaveLength(0);
   });
 
   it("salvages the day when one persona repeatedly fails (quorum met)", async () => {
@@ -384,11 +386,14 @@ describe("generateDay", () => {
     }
   });
 
-  it("throws when too few personas succeed (below quorum)", async () => {
-    // Every persona returns an empty POV -> all fail both attempts -> 0 succeed.
+  it("preserves the live briefing when too few personas succeed", async () => {
+    // Every persona returns an empty POV -> all retries fail -> 0 succeed.
     const llm = makeLlm(() => JSON.stringify({ text: "", stances: [] }));
-    await expect(
-      generateDay(llm, market, "2026-06-09T12:00:00.000Z"),
-    ).rejects.toThrow(/personas succeeded/);
+    const day = await generateDay(llm, market, "2026-06-09T12:00:00.000Z");
+
+    expect(day.source).toBe("live");
+    expect(day.keyPoints[0].sources[0].publisher).toBe("Reuters");
+    expect(day.povs).toHaveLength(0);
+    expect(day.dayDivergence.score).toBe(0);
   });
 });

@@ -108,8 +108,9 @@ export function currentCalendarDate(now: Date): string {
 
 /**
  * Get the day's content: serve cache if present; otherwise generate once,
- * cache, and serve. Any failure (missing keys, provider error, guardrails)
- * falls back to the bundled sample day, badged source:"sample" (FR-9).
+ * cache, and serve. Persona failures are retained as unavailable lenses on a
+ * live briefing; only failures that prevent building the briefing itself fall
+ * back to the bundled sample day, badged source:"sample" (FR-9).
  */
 export async function getDay(date: string, now: Date): Promise<DayContent> {
   const cached = await readCache(date);

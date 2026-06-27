@@ -279,11 +279,13 @@ button {
   gap: 16px;
 }
 .hero__score-num {
+  flex: 0 0 auto;
   font-family: var(--font-mono);
   font-size: 76px;
   font-weight: 600;
   line-height: 0.9;
-  letter-spacing: -0.04em;
+  letter-spacing: 0;
+  white-space: nowrap;
 }
 .hero__level {
   display: flex;
@@ -293,7 +295,7 @@ button {
 .hero__level-word {
   font-size: 26px;
   font-weight: 700;
-  letter-spacing: -0.02em;
+  letter-spacing: 0;
 }
 .hero__index-help-wrap {
   position: relative;

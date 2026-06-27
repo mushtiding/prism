@@ -55,8 +55,9 @@ export function KeyPointCard({
               </span>
             )}
             <span className="kp__divlabel">
-              {LEVEL_WORD[keyPoint.divergence.level]} ·{" "}
-              {keyPoint.divergence.score.toFixed(2)}
+              {points.length >= 2
+                ? `${LEVEL_WORD[keyPoint.divergence.level]} · ${keyPoint.divergence.score.toFixed(2)}`
+                : "Awaiting lenses"}
             </span>
           </div>
         </div>
@@ -91,35 +92,37 @@ export function KeyPointCard({
               </div>
             )}
 
-            <div className="stancegrid">
-              <span className="stancegrid__label">How each lens reads it</span>
-              {PERSONA_IDS.map((id) => {
-                const pov = povs.find((p) => p.personaId === id);
-                const stance = pov?.stances.find(
-                  (s) => s.keyPointId === keyPoint.id,
-                );
-                if (!stance) return null;
-                const style = PERSONA_STYLE[id];
-                return (
-                  <div className="stancerow" key={id}>
-                    <span className="stancerow__name">
-                      <span
-                        className="dot"
-                        style={{ background: style.color }}
-                      >
-                        {style.glyph}
+            {points.length > 0 && (
+              <div className="stancegrid">
+                <span className="stancegrid__label">How each lens reads it</span>
+                {PERSONA_IDS.map((id) => {
+                  const pov = povs.find((p) => p.personaId === id);
+                  const stance = pov?.stances.find(
+                    (s) => s.keyPointId === keyPoint.id,
+                  );
+                  if (!stance) return null;
+                  const style = PERSONA_STYLE[id];
+                  return (
+                    <div className="stancerow" key={id}>
+                      <span className="stancerow__name">
+                        <span
+                          className="dot"
+                          style={{ background: style.color }}
+                        >
+                          {style.glyph}
+                        </span>
+                        {style.short}
                       </span>
-                      {style.short}
-                    </span>
-                    <span className="stancerow__score mono">
-                      {stance.score > 0 ? "+" : ""}
-                      {stance.score} {stance.label}
-                    </span>
-                    <span className="stancerow__why">{stance.rationale}</span>
-                  </div>
-                );
-              })}
-            </div>
+                      <span className="stancerow__score mono">
+                        {stance.score > 0 ? "+" : ""}
+                        {stance.score} {stance.label}
+                      </span>
+                      <span className="stancerow__why">{stance.rationale}</span>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
           </div>
         </div>
       </div>

@@ -40,11 +40,14 @@ function divergenceMeaning(
 export function Hero({ day }: { day: DayContent }) {
   const div = day.dayDivergence;
   const [showIndexHelp, setShowIndexHelp] = useState(false);
+  const hasDivergenceSignal = day.povs.length >= 2;
   const lensSubject = day.kind === "myLens" ? "these lenses" : "today's lenses";
   const loadedLensNote =
     day.povs.length === PERSONA_IDS.length
       ? "All five lenses are included."
-      : `Based on ${day.povs.length} of five loaded lenses.`;
+      : day.povs.length === 0
+        ? "No lenses are loaded yet."
+        : `Based on ${day.povs.length} of five loaded lenses.`;
 
   // Each persona's overall daily lean = mean conviction across key points.
   const points: SpectrumPoint[] = [];
@@ -67,11 +70,11 @@ export function Hero({ day }: { day: DayContent }) {
       <div className="hero__head">
         <div className="hero__score">
           <span className={`hero__score-num lvl-${div.level}`}>
-            {div.score.toFixed(2)}
+            {hasDivergenceSignal ? div.score.toFixed(2) : "--"}
           </span>
           <div className="hero__level">
             <span className={`hero__level-word lvl-${div.level}`}>
-              {LEVEL_WORD[div.level]}
+              {hasDivergenceSignal ? LEVEL_WORD[div.level] : "Awaiting lenses"}
             </span>
             <span className="hero__index-help-wrap">
               <button
@@ -97,14 +100,20 @@ export function Hero({ day }: { day: DayContent }) {
                 </span>
                 <span>
                   <b>{day.kind === "myLens" ? "This read:" : "Today:"}</b>{" "}
-                  {divergenceMeaning(div.score, div.level, lensSubject)}{" "}
+                  {hasDivergenceSignal
+                    ? divergenceMeaning(div.score, div.level, lensSubject)
+                    : "A divergence value appears after at least two lenses load."}{" "}
                   {loadedLensNote}
                 </span>
               </span>
             </span>
           </div>
         </div>
-        <p className="hero__read">{divergenceBlurb(div.level)}</p>
+        <p className="hero__read">
+          {hasDivergenceSignal
+            ? divergenceBlurb(div.level)
+            : "Today's market brief is live. Persona lenses are currently unavailable."}
+        </p>
       </div>
       <div className="spectrum--hero">
         <Spectrum points={points} size="lg" />

@@ -32,6 +32,16 @@ export const PERSONA_QUORUM_GRACE_MS = 60_000;
 export const POV_RETRY_BASE_DELAY_MS = 2_000;
 const MAX_POV_ATTEMPTS = 3;
 
+export class PersonaQuorumError extends Error {
+  constructor(
+    message: string,
+    public readonly povs: PersonaPOV[],
+  ) {
+    super(message);
+    this.name = "PersonaQuorumError";
+  }
+}
+
 interface RawPov {
   text: string;
   activeBias: string;
@@ -300,21 +310,24 @@ export async function generatePersonaPovs(
 
   quorumDeadline?.cancel();
 
-  logEvent(`persona quorum: ${povs.length}/${PERSONA_LIST.length} succeeded`);
-  if (povs.length < MIN_PERSONAS_FOR_DAY) {
+  const orderedPovs = povs
+    .sort((a, b) => a.index - b.index)
+    .map(({ pov }) => pov);
+
+  logEvent(`persona quorum: ${orderedPovs.length}/${PERSONA_LIST.length} succeeded`);
+  if (orderedPovs.length < MIN_PERSONAS_FOR_DAY) {
     const pendingNames = [...pending.keys()]
       .map((i) => PERSONA_LIST[i].name)
       .join(", ");
     const details = [...failures];
     if (pendingNames) details.push(`still waiting: ${pendingNames}`);
-    throw new Error(
-      `Only ${povs.length}/${PERSONA_LIST.length} personas succeeded (need ${MIN_PERSONAS_FOR_DAY}): ${details.join(" | ")}`,
+    throw new PersonaQuorumError(
+      `Only ${orderedPovs.length}/${PERSONA_LIST.length} personas succeeded (need ${MIN_PERSONAS_FOR_DAY}): ${details.join(" | ")}`,
+      orderedPovs,
     );
   }
 
-  return povs
-    .sort((a, b) => a.index - b.index)
-    .map(({ pov }) => pov);
+  return orderedPovs;
 }
 
 /**
@@ -338,7 +351,16 @@ export async function generateDay(
     );
 
     setPipeline("persona POVs", "5 parallel OpenRouter calls");
-    const povs = await generatePersonaPovs(llm, briefingKeyPoints);
+    let povs: PersonaPOV[];
+    try {
+      povs = await generatePersonaPovs(llm, briefingKeyPoints);
+    } catch (err) {
+      if (!(err instanceof PersonaQuorumError)) throw err;
+      povs = err.povs;
+      logEvent(
+        `persona quorum unavailable: preserving live briefing with ${povs.length}/5 lenses`,
+      );
+    }
 
     setPipeline("divergence", "deterministic scoring");
     const keyPoints = withKeyPointDivergence(briefingKeyPoints, povs);
