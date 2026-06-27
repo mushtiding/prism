@@ -1,3 +1,4 @@
+import { useState } from "react";
 import type { DayContent, PersonaId } from "@prism/shared";
 import { PERSONA_IDS } from "@prism/shared";
 import { divergenceBlurb } from "../personaStyle";
@@ -20,9 +21,28 @@ function prettyDate(iso: string): string {
   });
 }
 
+function divergenceMeaning(
+  score: number,
+  level: DayContent["dayDivergence"]["level"],
+): string {
+  switch (level) {
+    case "consensus":
+      return `At ${score.toFixed(2)}, today's lenses mostly landed in the same place.`;
+    case "mixed":
+      return `At ${score.toFixed(2)}, today's lenses agree on some themes but split on others.`;
+    case "contested":
+      return `At ${score.toFixed(2)}, today's lenses are far apart: the same news is producing meaningfully different reads.`;
+  }
+}
+
 /** The day-level divergence — Prism's headline takeaway (FR-4). */
 export function Hero({ day }: { day: DayContent }) {
   const div = day.dayDivergence;
+  const [showIndexHelp, setShowIndexHelp] = useState(false);
+  const loadedLensNote =
+    day.povs.length === PERSONA_IDS.length
+      ? "All five lenses are included."
+      : `Based on ${day.povs.length} of five loaded lenses.`;
 
   // Each persona's overall daily lean = mean conviction across key points.
   const points: SpectrumPoint[] = [];
@@ -49,7 +69,36 @@ export function Hero({ day }: { day: DayContent }) {
             <span className={`hero__level-word lvl-${div.level}`}>
               {LEVEL_WORD[div.level]}
             </span>
-            <span className="hero__level-sub">divergence index · 0–1</span>
+            <span className="hero__index-help-wrap">
+              <button
+                type="button"
+                className="hero__index-help"
+                aria-describedby="divergence-index-help"
+                aria-expanded={showIndexHelp}
+                onBlur={() => setShowIndexHelp(false)}
+                onClick={() => setShowIndexHelp((current) => !current)}
+              >
+                divergence index · 0–1
+                <span className="hero__index-icon" aria-hidden="true">i</span>
+              </button>
+              <span
+                id="divergence-index-help"
+                className={`hero__index-tooltip${showIndexHelp ? " hero__index-tooltip--open" : ""}`}
+                role="tooltip"
+              >
+                <strong>How to read it</strong>
+                <span>
+                  This measures how far apart the available persona lenses are.
+                  Zero means they agree; one means they are maximally split
+                  between bullish and bearish reads. It measures disagreement,
+                  not where the market will go.
+                </span>
+                <span>
+                  <b>Today:</b> {divergenceMeaning(div.score, div.level)}{" "}
+                  {loadedLensNote}
+                </span>
+              </span>
+            </span>
           </div>
         </div>
         <p className="hero__read">{divergenceBlurb(div.level)}</p>
