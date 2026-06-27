@@ -78,6 +78,7 @@ describe("My Lens article preparation", () => {
   });
 
   it("labels invalid entries while analyzing valid entries", async () => {
+    const phases: string[] = [];
     const response = await analyzeMyLensArticles(
       llm,
       [
@@ -89,6 +90,7 @@ describe("My Lens article preparation", () => {
         { id: "invalid", value: "A guide to pruning roses in a small garden." },
       ],
       "2026-06-27T12:00:00.000Z",
+      (progress) => phases.push(progress.phase),
     );
 
     expect(response.articles.map((article) => article.status)).toEqual([
@@ -98,5 +100,8 @@ describe("My Lens article preparation", () => {
     expect(response.day?.kind).toBe("myLens");
     expect(response.day?.keyPoints).toHaveLength(1);
     expect(response.day?.povs).toHaveLength(5);
+    expect(phases).toEqual(
+      expect.arrayContaining(["reading", "validating", "personas", "scoring"]),
+    );
   });
 });

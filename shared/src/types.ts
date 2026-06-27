@@ -141,6 +141,36 @@ export interface MyLensResponse {
   day: DayContent | null;
 }
 
+export type MyLensJobPhase =
+  | "queued"
+  | "reading"
+  | "validating"
+  | "personas"
+  | "scoring"
+  | "complete"
+  | "failed";
+
+export interface MyLensJobProgress {
+  phase: MyLensJobPhase;
+  message: string;
+  completed?: number;
+  total?: number;
+}
+
+export interface MyLensJobCreated {
+  jobId: string;
+}
+
+export interface MyLensJobStatus {
+  jobId: string;
+  status: "running" | "complete" | "failed";
+  progress: MyLensJobProgress;
+  startedAt: string;
+  updatedAt: string;
+  result?: MyLensResponse;
+  error?: string;
+}
+
 /** /api/health diagnostic payload. */
 export interface HealthStatus {
   ok: boolean;

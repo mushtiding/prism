@@ -1185,6 +1185,43 @@ button {
 .my-lens__error {
   margin-top: 12px;
 }
+.my-lens__progress {
+  margin-top: 12px;
+  padding: 12px 14px;
+  border: 1px solid var(--line);
+  border-radius: 5px;
+  background: var(--bg-elev);
+  color: var(--ink-2);
+  font-size: 12.5px;
+}
+.my-lens__progress-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+.my-lens__progress-head .mono {
+  color: var(--ink-4);
+  font-size: 10px;
+}
+.my-lens__progress progress {
+  display: block;
+  width: 100%;
+  height: 3px;
+  margin-top: 10px;
+  border: 0;
+  border-radius: 0;
+  background: var(--line);
+}
+.my-lens__progress progress::-webkit-progress-bar {
+  background: var(--line);
+}
+.my-lens__progress progress::-webkit-progress-value {
+  background: var(--ink-2);
+}
+.my-lens__progress progress::-moz-progress-bar {
+  background: var(--ink-2);
+}
 .my-lens__results {
   margin-top: 34px;
 }

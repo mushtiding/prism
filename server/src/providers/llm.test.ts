@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { config } from "../config.js";
-import { OpenRouterClient } from "./llm.js";
+import { LlmRateLimitError, OpenRouterClient } from "./llm.js";
 
 function clientWithCompletion(completion: unknown): OpenRouterClient {
   const client = new OpenRouterClient("test-key");
@@ -49,6 +49,27 @@ describe("OpenRouterClient", () => {
 
       await expect(client.generate([], { label: "test" })).rejects.toThrow(
         /missing choices\[0\]\.message\.content/,
+      );
+    } finally {
+      config.openRouterModels = originalModels;
+    }
+  });
+
+  it("classifies an all-model 429 as a non-retryable rate limit", async () => {
+    const originalModels = config.openRouterModels;
+    config.openRouterModels = ["test-model"];
+    try {
+      const client = clientWithCompletion(null);
+      (
+        client as unknown as {
+          client: { chat: { completions: { create: () => Promise<unknown> } } };
+        }
+      ).client.chat.completions.create = async () => {
+        throw new Error("429 Rate limit exceeded: free-models-per-day");
+      };
+
+      await expect(client.generate([], { label: "test" })).rejects.toBeInstanceOf(
+        LlmRateLimitError,
       );
     } finally {
       config.openRouterModels = originalModels;

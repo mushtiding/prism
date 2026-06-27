@@ -2,6 +2,7 @@ import { useRef, useState } from "react";
 import type {
   DayContent,
   MyLensArticleResult,
+  MyLensJobProgress,
   PersonaDef,
   PersonaId,
 } from "@prism/shared";
@@ -40,10 +41,13 @@ export function MyLensView({
   const [results, setResults] = useState<Record<string, MyLensArticleResult>>({});
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [progress, setProgress] = useState<MyLensJobProgress | null>(null);
+  const [elapsedSeconds, setElapsedSeconds] = useState(0);
 
   function invalidateAnalysis() {
     setResults({});
     setError(null);
+    setProgress(null);
     onResult(null);
   }
 
@@ -75,13 +79,34 @@ export function MyLensView({
     setLoading(true);
     setError(null);
     setResults({});
+    setProgress({ phase: "queued", message: "Starting analysis" });
+    setElapsedSeconds(0);
     onResult(null);
     try {
-      const response = await api.analyzeMyLens(articles);
-      setResults(
-        Object.fromEntries(response.articles.map((article) => [article.id, article])),
-      );
-      onResult(response.day);
+      const { jobId } = await api.startMyLensAnalysis(articles);
+      while (true) {
+        const job = await api.myLensJob(jobId);
+        setProgress(job.progress);
+        setElapsedSeconds(
+          Math.max(0, Math.floor((Date.now() - Date.parse(job.startedAt)) / 1000)),
+        );
+
+        if (job.status !== "running") {
+          if (job.result) {
+            setResults(
+              Object.fromEntries(
+                job.result.articles.map((article) => [article.id, article]),
+              ),
+            );
+            onResult(job.result.day);
+          }
+          if (job.status === "failed") {
+            throw new Error(job.error ?? "The analysis could not finish.");
+          }
+          break;
+        }
+        await new Promise((resolve) => window.setTimeout(resolve, 750));
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not analyze these articles.");
     } finally {
@@ -169,12 +194,23 @@ export function MyLensView({
             disabled={readyCount === 0 || loading}
           >
             {loading
-              ? `Refracting ${readyCount} article${readyCount === 1 ? "" : "s"}...`
+              ? "Analyzing..."
               : readyCount === 0
                 ? "Analyze articles"
                 : `Analyze ${readyCount} article${readyCount === 1 ? "" : "s"}`}
           </button>
         </div>
+        {loading && progress && (
+          <div className="my-lens__progress" role="status" aria-live="polite">
+            <div className="my-lens__progress-head">
+              <span>{progress.message}</span>
+              <span className="mono">{elapsedSeconds}s</span>
+            </div>
+            {progress.total !== undefined && progress.completed !== undefined && (
+              <progress max={progress.total} value={progress.completed} />
+            )}
+          </div>
+        )}
         {error && <p className="my-lens__error">{error}</p>}
       </section>
 

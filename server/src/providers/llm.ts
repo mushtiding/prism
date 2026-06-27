@@ -42,6 +42,17 @@ export interface LlmClient {
   generate(messages: LlmMessage[], opts?: LlmGenerateOptions): Promise<string>;
 }
 
+export class LlmRateLimitError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "LlmRateLimitError";
+  }
+}
+
+function isRateLimitMessage(message: string): boolean {
+  return /(?:\b429\b|rate limit|free-models-per-)/i.test(message);
+}
+
 interface ChatCompletionLike {
   choices?: Array<{ message?: { content?: string | null } }>;
   error?: { message?: string };
@@ -197,9 +208,11 @@ export class OpenRouterClient implements LlmClient {
         }
       }
 
-      throw new Error(
-        `All OpenRouter models failed for ${label}: ${failures.join(" | ")}`,
-      );
+      const message = `All OpenRouter models failed for ${label}: ${failures.join(" | ")}`;
+      if (failures.length > 0 && failures.every(isRateLimitMessage)) {
+        throw new LlmRateLimitError(message);
+      }
+      throw new Error(message);
     } catch (err) {
       track.fail(String(err));
       throw err;

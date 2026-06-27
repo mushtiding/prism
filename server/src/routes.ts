@@ -12,12 +12,11 @@ import {
   loadTimeMachineCatalog,
   loadTimeMachineDay,
 } from "./store/sampleData.js";
-import { clearPipeline } from "./logger.js";
 import { OpenRouterClient } from "./providers/llm.js";
 import {
-  analyzeMyLensArticles,
   MAX_MY_LENS_ARTICLES,
 } from "./pipeline/userArticles.js";
+import { getMyLensJob, startMyLensJob } from "./store/myLensJobs.js";
 
 export const router = Router();
 
@@ -65,7 +64,7 @@ router.post("/day/latest/personas/:personaId/retry", async (req, res, next) => {
   }
 });
 
-router.post("/my-lens/analyze", async (req, res, next) => {
+router.post("/my-lens/analyze", (req, res) => {
   const articles = req.body?.articles as MyLensArticleInput[] | undefined;
   const validShape =
     Array.isArray(articles) &&
@@ -92,14 +91,18 @@ router.post("/my-lens/analyze", async (req, res, next) => {
     return;
   }
 
-  try {
-    const llm = new OpenRouterClient(config.openRouterApiKey);
-    res.json(await analyzeMyLensArticles(llm, articles, new Date().toISOString()));
-  } catch (err) {
-    next(err);
-  } finally {
-    clearPipeline();
+  const llm = new OpenRouterClient(config.openRouterApiKey);
+  const job = startMyLensJob(llm, articles);
+  res.status(202).json({ jobId: job.jobId });
+});
+
+router.get("/my-lens/jobs/:jobId", (req, res) => {
+  const job = getMyLensJob(req.params.jobId);
+  if (!job) {
+    res.status(404).json({ error: "Analysis job not found or expired." });
+    return;
   }
+  res.json(job);
 });
 
 router.get("/day/:date", async (req, res, next) => {

@@ -6,7 +6,11 @@ import {
   POV_RETRY_BASE_DELAY_MS,
 } from "./generate.js";
 import { generateNeutralBriefing } from "./neutralBriefing.js";
-import type { LlmClient, LlmMessage } from "../providers/llm.js";
+import {
+  LlmRateLimitError,
+  type LlmClient,
+  type LlmMessage,
+} from "../providers/llm.js";
 import type { MarketDataProvider, MarketSnapshot } from "../providers/marketData.js";
 
 const SNAPSHOT: MarketSnapshot = {
@@ -234,6 +238,23 @@ describe("generateDay", () => {
     expect(seenSystems.every((s) => !s.includes("neutral market briefing"))).toBe(true);
   });
 
+  it("lists the exact stance ids in the first persona prompt", async () => {
+    const userPrompts: string[] = [];
+    const llm: LlmClient = {
+      async generate(messages: LlmMessage[]): Promise<string> {
+        userPrompts.push(messages[1]?.content ?? "");
+        return validPov(keyPointIdsFromPrompt(messages[1]?.content ?? ""));
+      },
+    };
+
+    await generateDay(llm, market, "2026-06-09T12:00:00.000Z");
+
+    expect(userPrompts[0]).toContain(
+      'Required keyPointId values, in this exact order: ["kp1", "kp2", "kp3", "kp4"]',
+    );
+    expect(userPrompts[0]).toContain("Do not shorten, rename, or invent ids.");
+  });
+
   it("retries when a persona model returns malformed JSON", async () => {
     const calls = new Map<string, number>();
     const llm: LlmClient = {
@@ -303,6 +324,21 @@ describe("generateDay", () => {
     } finally {
       vi.useRealTimers();
     }
+  });
+
+  it("does not retry persona calls after a provider rate limit", async () => {
+    let calls = 0;
+    const llm: LlmClient = {
+      async generate(): Promise<string> {
+        calls += 1;
+        throw new LlmRateLimitError("429 Rate limit exceeded");
+      },
+    };
+
+    await expect(
+      generateDay(llm, market, "2026-06-09T12:00:00.000Z"),
+    ).rejects.toThrow(/personas succeeded/);
+    expect(calls).toBe(5);
   });
 
   it("salvages the day when one persona repeatedly fails (quorum met)", async () => {

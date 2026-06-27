@@ -6,7 +6,7 @@ import {
   type PersonaPOV,
   type StanceLabel,
 } from "@prism/shared";
-import type { LlmClient } from "../providers/llm.js";
+import { LlmRateLimitError, type LlmClient } from "../providers/llm.js";
 import type { MarketDataProvider } from "../providers/marketData.js";
 import { PERSONA_LIST } from "../domain/personas.js";
 import { clearPipeline, logEvent, setPipeline } from "../logger.js";
@@ -139,6 +139,10 @@ Return the complete corrected JSON object now. Keep text under 120 words and eac
       );
     } catch (err) {
       lastErr = `model request failed: ${err instanceof Error ? err.message : String(err)}`;
+      if (err instanceof LlmRateLimitError) {
+        logEvent(`${persona.name} attempt ${attempt + 1} stopped: ${lastErr}`);
+        throw err;
+      }
       const hasRetry = attempt + 1 < MAX_POV_ATTEMPTS;
       const retryDelayMs = POV_RETRY_BASE_DELAY_MS * (attempt + 1);
       logEvent(
@@ -241,7 +245,11 @@ export function mergePersonaPov(
 export async function generatePersonaPovs(
   llm: LlmClient,
   keyPoints: KeyPoint[],
-  options: { briefingLabel?: string; quorumGraceMs?: number } = {},
+  options: {
+    briefingLabel?: string;
+    quorumGraceMs?: number;
+    onProgress?: (completed: number, total: number) => void;
+  } = {},
 ): Promise<PersonaPOV[]> {
   const quorumGraceMs = options.quorumGraceMs ?? PERSONA_QUORUM_GRACE_MS;
   const pending = new Map<number, Promise<SettledPov>>();
@@ -252,6 +260,7 @@ export async function generatePersonaPovs(
   for (let i = 0; i < PERSONA_LIST.length; i++) {
     pending.set(i, settlePov(llm, i, keyPoints, options.briefingLabel));
   }
+  options.onProgress?.(0, PERSONA_LIST.length);
 
   while (pending.size > 0) {
     const racers: Array<Promise<SettledPov | QuorumTimeout>> = [
@@ -286,6 +295,7 @@ export async function generatePersonaPovs(
       failures.push(detail);
       logEvent(detail);
     }
+    options.onProgress?.(PERSONA_LIST.length - pending.size, PERSONA_LIST.length);
   }
 
   quorumDeadline?.cancel();

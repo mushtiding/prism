@@ -56,13 +56,19 @@ Relevant files:
   downloads at most 512 KB and parses HTML with `node-html-parser`.
 - `server/src/pipeline/userArticles.ts`: truncation, deterministic finance-topic
   validation, key-point construction, and persona analysis.
+- `server/src/store/myLensJobs.ts`: in-memory 30-minute jobs, progress state,
+  preserved article validation results, and sanitized provider errors.
 - `POST /api/my-lens/analyze`: accepts `{ articles: [{ id, value }] }` and
-  returns per-entry statuses plus a `DayContent` result for valid articles.
+  returns HTTP 202 with a job id.
+- `GET /api/my-lens/jobs/:jobId`: reports reading, validation, persona, and
+  scoring progress, then returns per-entry statuses and any `DayContent` result.
 
 Invalid entries do not block valid entries in the same request. My Lens is not
 cached and currently waits up to 120 seconds after persona quorum to improve
 the chance of returning all five lenses. User article text is explicitly
 treated as untrusted source material in the persona system prompt.
+OpenRouter 429 responses stop after one request per persona and surface a
+specific rate-limit message instead of a generic internal error.
 
 ## Frontend Notes
 
@@ -83,6 +89,7 @@ treated as untrusted source material in the persona system prompt.
 - `POST /api/day/latest/personas/:personaId/retry`
 - `GET /api/day/:date`
 - `POST /api/my-lens/analyze`
+- `GET /api/my-lens/jobs/:jobId`
 - `GET /api/timemachine`
 - `GET /api/timemachine/:id`
 
@@ -90,15 +97,16 @@ treated as untrusted source material in the persona system prompt.
 
 At this handoff:
 
-- `npm test`: 10 files, 52 tests passed.
+- `npm test`: 11 files, 57 tests passed.
 - `npm run typecheck`: all workspaces passed.
 - `npm run build`: all workspaces passed.
 - `npm audit --omit=dev`: no production vulnerabilities.
 - Browser checks covered invalid text, the three-article cap, URL mode, tab
-  draft persistence, 390px layout, mixed valid/invalid submission, and result
-  rendering.
-- A final live API submission returned all five persona POVs for one pasted
-  finance article.
+  draft persistence, 390px layout, mixed valid/invalid submission, result
+  rendering, and the live progress/error state for a Yahoo Finance URL.
+- The exact Yahoo URL from the June 27 bug report was extracted and validated.
+  OpenRouter was over its free-model quota, so the job preserved `VALID` for
+  the article and returned the explicit rate-limit outcome in about four seconds.
 
 ## Known Limits
 

@@ -100,8 +100,12 @@ export function buildPovUser(
   keyPoints: KeyPoint[],
   heading = "Today's neutral briefing (react only to these):",
 ): string {
+  const requiredIds = keyPoints.map((kp) => `"${kp.id}"`).join(", ");
   return [
     heading,
+    "",
+    `Required keyPointId values, in this exact order: [${requiredIds}]`,
+    "Copy these ids exactly into stances. Do not shorten, rename, or invent ids.",
     "",
     ...keyPoints.map(
       (kp) =>
