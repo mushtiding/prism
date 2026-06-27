@@ -3,7 +3,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { config, isLiveMode } from "./config.js";
 import { logEvent } from "./logger.js";
-import { latestTradingDay } from "./store/dailyStore.js";
+import { currentCalendarDate } from "./store/dailyStore.js";
 import { loadSampleDay, loadTimeMachineCatalog } from "./store/sampleData.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -56,7 +56,7 @@ export async function runStartupChecks(): Promise<void> {
       ? "daily cache empty"
       : `daily cache · ${cached.join(", ")}`,
   );
-  logEvent(`latest trading day · ${latestTradingDay(new Date())}`);
+  logEvent(`current calendar day · ${currentCalendarDate(new Date())}`);
 
   if (!isLiveMode()) {
     logEvent("live generation disabled — serving bundled sample until both keys are set");

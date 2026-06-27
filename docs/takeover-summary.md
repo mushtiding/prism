@@ -110,4 +110,5 @@ At this handoff:
 - My Lens results are in-memory browser state and are not restored after reload.
 - Nemotron can still return malformed JSON or upstream capacity errors. Retry,
   quorum, and unavailable states keep those failures explicit.
-- `latestTradingDay()` skips weekends but does not use a holiday calendar.
+- Today is keyed and displayed by the server's current local calendar date;
+  provider quote data may still describe the previous market session.

@@ -165,6 +165,18 @@ describe("generateDay", () => {
     expect(day.dayDivergence.score).toBeGreaterThanOrEqual(0);
   });
 
+  it("uses an explicit display date instead of the provider session date", async () => {
+    const llm = makeLlm(() => validPov());
+    const day = await generateDay(
+      llm,
+      market,
+      "2026-06-27T12:00:00.000Z",
+      "2026-06-27",
+    );
+
+    expect(day.date).toBe("2026-06-27");
+  });
+
   it("merges a recovered persona in canonical order and recomputes divergence", async () => {
     const llm = makeLlm(() => validPov());
     const full = await generateDay(llm, market, "2026-06-09T12:00:00.000Z");

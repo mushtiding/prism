@@ -315,6 +315,7 @@ export async function generateDay(
   llm: LlmClient,
   market: MarketDataProvider,
   nowIso: string,
+  displayDate?: string,
 ): Promise<DayContent> {
   try {
     setPipeline("market data", "market snapshot");
@@ -334,7 +335,7 @@ export async function generateDay(
     const dayDivergence = computeDayDivergence(povs);
 
     return {
-      date: snapshot.tradingDay || nowIso.slice(0, 10),
+      date: displayDate ?? snapshot.tradingDay ?? nowIso.slice(0, 10),
       kind: "daily",
       source: "live",
       keyPoints,

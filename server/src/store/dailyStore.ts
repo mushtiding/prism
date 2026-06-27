@@ -98,15 +98,12 @@ async function mergePovIntoCache(
   }
 }
 
-/** Most recent US trading weekday on or before `now` (holidays ignored). */
-export function latestTradingDay(now: Date): string {
-  const d = new Date(now);
-  // Market content describes the PREVIOUS session, so step back one day first.
-  d.setUTCDate(d.getUTCDate() - 1);
-  while (d.getUTCDay() === 0 || d.getUTCDay() === 6) {
-    d.setUTCDate(d.getUTCDate() - 1);
-  }
-  return d.toISOString().slice(0, 10);
+/** Current calendar date in the server's local timezone. */
+export function currentCalendarDate(now: Date): string {
+  const year = now.getFullYear();
+  const month = String(now.getMonth() + 1).padStart(2, "0");
+  const day = String(now.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
 }
 
 /**
@@ -143,7 +140,7 @@ export async function getDay(date: string, now: Date): Promise<DayContent> {
       const market = new ResilientMarketDataProvider(
         new AlphaVantageProvider(config.alphaVantageApiKey!),
       );
-      const day = await generateDay(llm, market, now.toISOString());
+      const day = await generateDay(llm, market, now.toISOString(), date);
       setPipeline("cache write", date);
       await writeCache(date, day);
       recordDayOutcome("live", date, day.source);

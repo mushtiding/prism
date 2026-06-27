@@ -4,7 +4,7 @@ import { config, isLiveMode } from "./config.js";
 import { PERSONAS, PERSONA_LIST } from "./domain/personas.js";
 import {
   getDay,
-  latestTradingDay,
+  currentCalendarDate,
   PersonaRetryTimeoutError,
   retryMissingPersona,
 } from "./store/dailyStore.js";
@@ -39,7 +39,7 @@ router.get("/personas", (_req, res) => {
 router.get("/day/latest", async (_req, res, next) => {
   try {
     const now = new Date();
-    const date = latestTradingDay(now);
+    const date = currentCalendarDate(now);
     res.json(await getDay(date, now));
   } catch (err) {
     next(err);
@@ -54,7 +54,7 @@ router.post("/day/latest/personas/:personaId/retry", async (req, res, next) => {
   }
 
   try {
-    const cacheKey = latestTradingDay(new Date());
+    const cacheKey = currentCalendarDate(new Date());
     res.json(await retryMissingPersona(cacheKey, personaId as keyof typeof PERSONAS));
   } catch (err) {
     if (err instanceof PersonaRetryTimeoutError) {
