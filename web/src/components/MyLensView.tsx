@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { Trash2 } from "lucide-react";
+import { Plus, Trash2 } from "lucide-react";
 import type {
   DayContent,
   MyLensArticleResult,
@@ -13,8 +13,9 @@ import { Hero } from "./Hero";
 import { KeyPointCard } from "./KeyPointCard";
 
 const ARTICLE_CHAR_LIMIT = 1_500;
-const MAX_ARTICLES = 3;
+const MAX_ARTICLES = 5;
 const STORAGE_KEY = "prism.my-lens.v1";
+const STORAGE_VERSION = 2;
 
 interface DraftArticle {
   id: string;
@@ -22,6 +23,7 @@ interface DraftArticle {
 }
 
 interface StoredMyLensState {
+  version: number;
   drafts: DraftArticle[];
   results: Record<string, MyLensArticleResult>;
   day: DayContent | null;
@@ -29,7 +31,8 @@ interface StoredMyLensState {
 
 function emptyState(): StoredMyLensState {
   return {
-    drafts: [{ id: "my-lens-1", value: "" }],
+    version: STORAGE_VERSION,
+    drafts: [],
     results: {},
     day: null,
   };
@@ -47,23 +50,29 @@ function loadStoredState(): StoredMyLensState {
               Boolean(
                 draft &&
                   typeof draft.id === "string" &&
-                  typeof draft.value === "string",
+                  typeof draft.value === "string" &&
+                  draft.value.trim(),
               ),
           )
           .slice(0, MAX_ARTICLES)
       : [];
-    const results = Object.fromEntries(
-      Object.entries(parsed?.results ?? {}).filter(([, result]) =>
-        Boolean(
-          result &&
-            (result.status === "valid" || result.status === "invalid") &&
-            (result.inputType === "text" || result.inputType === "url"),
-        ),
-      ),
-    ) as Record<string, MyLensArticleResult>;
-    const day = parsed?.day?.kind === "myLens" ? parsed.day : null;
+    const currentVersion = parsed?.version === STORAGE_VERSION;
+    const results = currentVersion
+      ? (Object.fromEntries(
+          Object.entries(parsed?.results ?? {}).filter(([, result]) =>
+            Boolean(
+              result &&
+                (result.status === "valid" || result.status === "invalid") &&
+                (result.inputType === "text" || result.inputType === "url"),
+            ),
+          ),
+        ) as Record<string, MyLensArticleResult>)
+      : {};
+    const day =
+      currentVersion && parsed?.day?.kind === "myLens" ? parsed.day : null;
     return {
-      drafts: drafts.length > 0 ? drafts : emptyState().drafts,
+      version: STORAGE_VERSION,
+      drafts,
       results,
       day,
     };
@@ -87,6 +96,13 @@ function looksLikeUrl(value: string): boolean {
   return /^(?:https?:\/\/|www\.)/i.test(value.trim());
 }
 
+function sameArticleIds(left: string[], right: string[]): boolean {
+  return (
+    left.length === right.length &&
+    left.every((id, index) => id === right[index])
+  );
+}
+
 export function MyLensView({
   defs,
   onResult,
@@ -103,6 +119,7 @@ export function MyLensView({
     stored.results,
   );
   const [day, setDay] = useState<DayContent | null>(stored.day);
+  const [inputValue, setInputValue] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [progress, setProgress] = useState<MyLensJobProgress | null>(null);
@@ -113,43 +130,31 @@ export function MyLensView({
     try {
       window.localStorage.setItem(
         STORAGE_KEY,
-        JSON.stringify({ drafts, results, day } satisfies StoredMyLensState),
+        JSON.stringify({
+          version: STORAGE_VERSION,
+          drafts,
+          results,
+          day,
+        } satisfies StoredMyLensState),
       );
     } catch {
       // Storage can be unavailable in privacy modes; in-memory state still works.
     }
   }, [day, drafts, onResult, results]);
 
-  function updateDraft(id: string, value: string) {
-    setDrafts((current) =>
-      current.map((draft) => (draft.id === id ? { ...draft, value } : draft)),
-    );
-    setResults((current) => {
-      if (!current[id] || current[id].status === "valid") return current;
-      const next = { ...current };
-      delete next[id];
-      return next;
-    });
-    setError(null);
-    setProgress(null);
-  }
-
-  function addDraft() {
-    if (drafts.length >= MAX_ARTICLES) return;
+  function queueArticle() {
+    const value = inputValue.trim();
+    if (!value || drafts.length >= MAX_ARTICLES || loading) return;
     const id = `my-lens-${nextId.current++}`;
-    setDrafts((current) => [...current, { id, value: "" }]);
+    setDrafts((current) => [...current, { id, value }]);
+    setInputValue("");
     setError(null);
     setProgress(null);
   }
 
   function removeDraft(id: string) {
     const removedGeneratedArticle = results[id]?.status === "valid";
-    setDrafts((current) => {
-      const next = current.filter((draft) => draft.id !== id);
-      return next.length > 0
-        ? next
-        : [{ id: `my-lens-${nextId.current++}`, value: "" }];
-    });
+    setDrafts((current) => current.filter((draft) => draft.id !== id));
     if (removedGeneratedArticle) {
       setResults({});
       setDay(null);
@@ -169,6 +174,10 @@ export function MyLensView({
       .filter((draft) => draft.value.trim())
       .map(({ id, value }) => ({ id, value }));
     if (articles.length === 0 || loading) return;
+    const previousDay = day;
+    const previousValidIds = drafts.flatMap((draft) =>
+      results[draft.id]?.status === "valid" ? [draft.id] : [],
+    );
 
     setLoading(true);
     setError(null);
@@ -185,15 +194,22 @@ export function MyLensView({
 
         if (job.status !== "running") {
           if (job.status === "complete" && job.result) {
-            setResults(
-              Object.fromEntries(
-                job.result.articles.map((article) => [article.id, article]),
-              ),
+            const nextResults = Object.fromEntries(
+              job.result.articles.map((article) => [article.id, article]),
             );
-            setDay(job.result.day);
+            const nextValidIds = job.result.articles.flatMap((article) =>
+              article.status === "valid" ? [article.id] : [],
+            );
+            const unchangedValidAnalysis = Boolean(
+              previousDay &&
+                previousValidIds.length > 0 &&
+                sameArticleIds(previousValidIds, nextValidIds),
+            );
+            setResults(nextResults);
+            setDay(unchangedValidAnalysis ? previousDay : job.result.day);
           }
           if (job.status === "failed") {
-            if (!day && job.result) {
+            if (job.result) {
               setResults(
                 Object.fromEntries(
                   job.result.articles.map((article) => [article.id, article]),
@@ -213,82 +229,106 @@ export function MyLensView({
     }
   }
 
-  const readyCount = drafts.filter((draft) => draft.value.trim()).length;
+  const readyCount = drafts.length;
+  const inputIsUrl = looksLikeUrl(inputValue);
+  const inputChars = Math.min(inputValue.length, ARTICLE_CHAR_LIMIT);
+  const atLimit = drafts.length >= MAX_ARTICLES;
 
   return (
     <>
       <section className="my-lens">
-        <div className="section-label">My Lens</div>
-        <div className="my-lens__inputs">
-          {drafts.map((draft, index) => {
-            const result = results[draft.id];
-            const urlInput = looksLikeUrl(draft.value);
-            const analyzedChars = Math.min(draft.value.length, ARTICLE_CHAR_LIMIT);
-            const countLabel = urlInput
-              ? "first 1,500 article chars analyzed"
-              : `${analyzedChars.toLocaleString()} / 1,500 analyzed${draft.value.length > ARTICLE_CHAR_LIMIT ? " · truncated" : ""}`;
-            return (
-              <div
-                className={`article-input${result?.status === "invalid" ? " article-input--invalid" : ""}`}
-                key={draft.id}
-              >
-                <div className="article-input__head">
-                  <label htmlFor={draft.id}>Article {index + 1}</label>
-                  <div className="article-input__tools">
-                    <span className="article-input__mode mono">
-                      {urlInput ? "URL" : "TEXT"}
-                    </span>
-                    {(draft.value.trim() || drafts.length > 1) && (
-                      <button
-                        className="article-input__remove"
-                        onClick={() => removeDraft(draft.id)}
-                        title={`Remove article ${index + 1}`}
-                        aria-label={`Remove article ${index + 1}`}
-                        data-testid={`remove-${draft.id}`}
-                        type="button"
-                        disabled={loading}
-                      >
-                        <Trash2 size={14} strokeWidth={1.8} aria-hidden="true" />
-                      </button>
-                    )}
-                  </div>
-                </div>
-                <textarea
-                  id={draft.id}
-                  value={draft.value}
-                  onChange={(event) => updateDraft(draft.id, event.target.value)}
-                  placeholder="Paste a finance article or URL"
-                  rows={5}
-                  disabled={loading}
-                  readOnly={result?.status === "valid"}
-                />
-                <div className="article-input__foot">
-                  <span className="article-input__count mono">
-                    {countLabel}
-                  </span>
-                  {result && (
-                    <span className={`article-input__status article-input__status--${result.status}`}>
-                      {result.status}
-                    </span>
-                  )}
-                </div>
-                {result?.status === "invalid" && result.reason && (
-                  <p className="article-input__error">{result.reason}</p>
-                )}
-              </div>
-            );
-          })}
+        <div className="section-label">
+          Your moves · {drafts.length} / {MAX_ARTICLES}
         </div>
 
+        <div className="article-composer">
+          <div className="article-composer__head">
+            <label htmlFor="your-moves-input">Add a finance article</label>
+            <span className="mono">URL or text</span>
+          </div>
+          <textarea
+            id="your-moves-input"
+            value={inputValue}
+            onChange={(event) => {
+              setInputValue(event.target.value);
+              setError(null);
+            }}
+            placeholder={
+              atLimit
+                ? "Remove an article below to add another"
+                : "Paste an article URL or its text"
+            }
+            rows={2}
+            disabled={loading || atLimit}
+          />
+          <div className="article-composer__foot">
+            <span className="article-composer__count mono">
+              {inputIsUrl
+                ? "First 1,500 article chars analyzed"
+                : `${inputChars.toLocaleString()} / 1,500 chars${inputValue.length > ARTICLE_CHAR_LIMIT ? " · truncated" : ""}`}
+            </span>
+            <button
+              className="article-composer__add"
+              type="button"
+              onClick={queueArticle}
+              disabled={!inputValue.trim() || loading || atLimit}
+            >
+              <Plus size={15} strokeWidth={2} aria-hidden="true" />
+              Add to list
+            </button>
+          </div>
+        </div>
+
+        {drafts.length > 0 && (
+          <div className="article-list">
+            <div className="article-list__head">
+              <span>Article list</span>
+              <span className="mono">
+                {MAX_ARTICLES - drafts.length} slot{MAX_ARTICLES - drafts.length === 1 ? "" : "s"} left
+              </span>
+            </div>
+          {drafts.map((draft, index) => {
+            const result = results[draft.id];
+            const title = result?.title?.trim() || draft.value.trim().slice(0, 180);
+            return (
+              <article
+                className={`article-list__item${result?.status === "invalid" ? " article-list__item--invalid" : ""}`}
+                key={draft.id}
+              >
+                <div className="article-list__content">
+                  <div className="article-list__title">{title}</div>
+                  {result?.status === "invalid" && result.reason && (
+                    <p className="article-list__error">{result.reason}</p>
+                  )}
+                </div>
+                <span
+                  className={`article-list__status article-list__status--${result?.status ?? "queued"}`}
+                >
+                  {result?.status ?? "queued"}
+                </span>
+                <button
+                  className="article-list__remove"
+                  onClick={() => removeDraft(draft.id)}
+                  title={`Remove article ${index + 1}`}
+                  aria-label={`Remove article ${index + 1}`}
+                  data-testid={`remove-${draft.id}`}
+                  type="button"
+                  disabled={loading}
+                >
+                  <Trash2 size={15} strokeWidth={1.8} aria-hidden="true" />
+                </button>
+              </article>
+            );
+          })}
+          </div>
+        )}
+
         <div className="my-lens__actions">
-          <button
-            className="my-lens__add"
-            type="button"
-            onClick={addDraft}
-            disabled={drafts.length >= MAX_ARTICLES || loading}
-          >
-            + Add article
-          </button>
+          <span className="my-lens__queue-note">
+            {readyCount === 0
+              ? "Add up to five finance articles."
+              : `${readyCount} article${readyCount === 1 ? "" : "s"} ready.`}
+          </span>
           <button
             className="my-lens__analyze"
             type="button"
@@ -298,7 +338,7 @@ export function MyLensView({
             {loading
               ? "Analyzing..."
               : readyCount === 0
-                ? "Analyze articles"
+                ? "Analyze moves"
                 : `Analyze ${readyCount} article${readyCount === 1 ? "" : "s"}`}
           </button>
         </div>
@@ -321,7 +361,7 @@ export function MyLensView({
           <Hero day={day} />
           <section className="keypoints">
             <div className="section-label">
-              Your articles · {day.keyPoints.length} analyzed
+              Your moves · {day.keyPoints.length} analyzed
             </div>
             {day.keyPoints.map((keyPoint) => (
               <KeyPointCard key={keyPoint.id} keyPoint={keyPoint} povs={day.povs} />

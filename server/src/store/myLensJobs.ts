@@ -88,7 +88,7 @@ export function startMyLensJob(
         ? { articles: err.articles, day: null }
         : undefined;
       const error = publicError(err);
-      logEvent(`my lens job ${jobId} failed: ${error}`);
+      logEvent(`your moves job ${jobId} failed: ${error}`);
       updateJob(jobId, {
         status: "failed",
         progress: { phase: "failed", message: "Analysis unavailable" },

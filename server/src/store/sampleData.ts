@@ -1,7 +1,7 @@
 import { promises as fs } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import type { DayContent, TimeMachineEvent } from "@prism/shared";
+import type { DayContent } from "@prism/shared";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const DATA_DIR = path.resolve(__dirname, "../../data");
@@ -19,26 +19,4 @@ async function readDay(file: string): Promise<DayContent> {
 export async function loadSampleDay(date: string): Promise<DayContent> {
   const day = await readDay("sample-day.json");
   return { ...day, date, source: "sample" };
-}
-
-/** Catalog of curated historical replays (FR-8). */
-export async function loadTimeMachineCatalog(): Promise<TimeMachineEvent[]> {
-  const raw = await fs.readFile(
-    path.join(DATA_DIR, "timemachine", "index.json"),
-    "utf8",
-  );
-  return JSON.parse(raw) as TimeMachineEvent[];
-}
-
-/** One curated historical day (FR-8). Returns null if the id is unknown. */
-export async function loadTimeMachineDay(
-  id: string,
-): Promise<DayContent | null> {
-  // Restrict to a safe filename to avoid path traversal.
-  if (!/^[a-z0-9-]+$/.test(id)) return null;
-  try {
-    return await readDay(path.join("timemachine", `${id}.json`));
-  } catch {
-    return null;
-  }
 }

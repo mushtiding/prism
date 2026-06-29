@@ -5,13 +5,11 @@ import { PERSONAS, PERSONA_LIST } from "./domain/personas.js";
 import {
   getDay,
   currentCalendarDate,
+  listGeneratedHistory,
   PersonaRetryTimeoutError,
+  readGeneratedHistoryDay,
   retryMissingPersona,
 } from "./store/dailyStore.js";
-import {
-  loadTimeMachineCatalog,
-  loadTimeMachineDay,
-} from "./store/sampleData.js";
 import { OpenRouterClient } from "./providers/llm.js";
 import {
   MAX_MY_LENS_ARTICLES,
@@ -83,11 +81,11 @@ router.post("/my-lens/analyze", (req, res) => {
     new Set(articles.map((article) => article.id)).size === articles.length;
 
   if (!validShape) {
-    res.status(400).json({ error: "Provide one to three non-empty articles." });
+    res.status(400).json({ error: "Provide one to five non-empty articles." });
     return;
   }
   if (!config.openRouterApiKey) {
-    res.status(503).json({ error: "My Lens requires an OpenRouter API key." });
+    res.status(503).json({ error: "Your Moves requires an OpenRouter API key." });
     return;
   }
 
@@ -105,6 +103,32 @@ router.get("/my-lens/jobs/:jobId", (req, res) => {
   res.json(job);
 });
 
+router.get("/history", async (_req, res, next) => {
+  try {
+    res.json(await listGeneratedHistory());
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.get("/history/:date", async (req, res, next) => {
+  try {
+    const { date } = req.params;
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) {
+      res.status(400).json({ error: "date must be YYYY-MM-DD" });
+      return;
+    }
+    const day = await readGeneratedHistoryDay(date);
+    if (!day) {
+      res.status(404).json({ error: "No generated briefing exists for this prior date." });
+      return;
+    }
+    res.json(day);
+  } catch (err) {
+    next(err);
+  }
+});
+
 router.get("/day/:date", async (req, res, next) => {
   try {
     const { date } = req.params;
@@ -112,28 +136,14 @@ router.get("/day/:date", async (req, res, next) => {
       res.status(400).json({ error: "date must be YYYY-MM-DD" });
       return;
     }
-    res.json(await getDay(date, new Date()));
-  } catch (err) {
-    next(err);
-  }
-});
-
-router.get("/timemachine", async (_req, res, next) => {
-  try {
-    res.json(await loadTimeMachineCatalog());
-  } catch (err) {
-    next(err);
-  }
-});
-
-router.get("/timemachine/:id", async (req, res, next) => {
-  try {
-    const day = await loadTimeMachineDay(req.params.id);
-    if (!day) {
-      res.status(404).json({ error: "unknown event" });
+    const now = new Date();
+    if (date !== currentCalendarDate(now)) {
+      res.status(404).json({
+        error: "Only today's briefing can be generated. History contains existing prior briefings.",
+      });
       return;
     }
-    res.json(day);
+    res.json(await getDay(date, now));
   } catch (err) {
     next(err);
   }

@@ -25,7 +25,7 @@ export function PersonaDrawer({
 }: {
   def: PersonaDef;
   pov: PersonaPOV;
-  context?: "today" | "your articles";
+  context?: "today" | "your articles" | "this briefing";
   onClose: () => void;
 }) {
   const [showDef, setShowDef] = useState(false);

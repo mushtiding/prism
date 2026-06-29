@@ -60,21 +60,26 @@ npm run dev          # server on :8787, web on :5173 → open http://localhost:5
 # The server loads keys from server/.env, not from a repo-root .env.
 ```
 
+The dev and preview servers also listen on the Tailscale interface. Depending
+on which Vite port is printed at startup, open either
+`http://sakuranbo.tail96df1c.ts.net:<port>` or
+`http://100.67.88.54:<port>` from the tailnet.
+
 Other scripts:
 
 ```bash
 npm test             # server unit tests (divergence, guardrails, pipeline, cache)
 npm run typecheck    # all three packages
 npm run build        # build shared + server + web
-npm -w server run build:data   # regenerate bundled sample + time-machine data
+npm -w server run build:data   # regenerate bundled sample and archived fixtures
 ```
 
 ## What's built
 
-MVP (FR-1, 2, 3, 4, 6, 9, 10, 11) plus the **Time Machine** (FR-8): replay famous
-past market days (Black Monday 1987, the 2021 GameStop squeeze) and watch the
-same five lenses react. Deferred: track record (FR-5), onboarding (FR-7),
-follow-up Q&A.
+The app has three workspaces: **Today** generates the current daily briefing,
+**Your Moves** analyzes up to five user-provided finance articles, and
+**History** reads prior daily briefings only when they already exist in the
+generated cache. History never backfills or generates an earlier date.
 
 ## Compliance
 

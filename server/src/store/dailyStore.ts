@@ -1,7 +1,12 @@
 import { promises as fs } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import type { DayContent, PersonaId, PersonaPOV } from "@prism/shared";
+import type {
+  DayContent,
+  HistoryDaySummary,
+  PersonaId,
+  PersonaPOV,
+} from "@prism/shared";
 import { config, isLiveMode } from "../config.js";
 import { clearPipeline, logEvent, recordDayOutcome, recordDayStarted, recordFallback, setPipeline } from "../logger.js";
 import { OpenRouterClient } from "../providers/llm.js";
@@ -33,17 +38,75 @@ export class PersonaRetryTimeoutError extends Error {
   }
 }
 
-function cacheFile(date: string): string {
-  return path.join(CACHE_DIR, `${date}.json`);
+function cacheFile(date: string, cacheDir = CACHE_DIR): string {
+  return path.join(cacheDir, `${date}.json`);
 }
 
-async function readCache(date: string): Promise<DayContent | null> {
+async function readCache(
+  date: string,
+  cacheDir = CACHE_DIR,
+): Promise<DayContent | null> {
   try {
-    const raw = await fs.readFile(cacheFile(date), "utf8");
+    const raw = await fs.readFile(cacheFile(date, cacheDir), "utf8");
     return JSON.parse(raw) as DayContent;
   } catch {
     return null;
   }
+}
+
+/** Read one prior generated briefing without invoking the generation pipeline. */
+export async function readGeneratedHistoryDay(
+  date: string,
+  now = new Date(),
+  cacheDir = CACHE_DIR,
+): Promise<DayContent | null> {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return null;
+  if (date >= currentCalendarDate(now)) return null;
+
+  const day = await readCache(date, cacheDir);
+  if (!day || day.kind !== "daily" || day.source !== "live") return null;
+
+  // The cache key is the briefing date. Normalize older cached payloads that
+  // predate that invariant so History never labels one file as another day.
+  return day.date === date ? day : { ...day, date };
+}
+
+/** List prior live briefings that already exist on disk, newest first. */
+export async function listGeneratedHistory(
+  now = new Date(),
+  cacheDir = CACHE_DIR,
+): Promise<HistoryDaySummary[]> {
+  let files: string[];
+  try {
+    files = await fs.readdir(cacheDir);
+  } catch {
+    return [];
+  }
+
+  const dates = files
+    .map((file) => file.match(/^(\d{4}-\d{2}-\d{2})\.json$/)?.[1])
+    .filter((date): date is string => Boolean(date))
+    .sort((a, b) => b.localeCompare(a));
+  const days = await Promise.all(
+    dates.map(async (date) => ({
+      date,
+      day: await readGeneratedHistoryDay(date, now, cacheDir),
+    })),
+  );
+
+  return days.flatMap(({ date, day }) =>
+    day
+      ? [
+          {
+            date,
+            generatedAt: day.generatedAt,
+            keyPointCount: day.keyPoints.length,
+            personaCount: day.povs.length,
+            leadSummary: day.keyPoints[0]?.summary ?? "Generated market briefing",
+          },
+        ]
+      : [],
+  );
 }
 
 // Write under an explicit cache key (the requested date) so the file we store

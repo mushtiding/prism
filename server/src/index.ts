@@ -42,9 +42,9 @@ async function main() {
   startStatusReporter();
   logBootSummary(config.port);
 
-  app.listen(config.port, () => {
+  app.listen(config.port, config.host, () => {
     console.log(
-      `[prism] listening http://localhost:${config.port} (${isLiveMode() ? "LIVE" : "SAMPLE"})`,
+      `[prism] listening on ${config.host}:${config.port} (${isLiveMode() ? "LIVE" : "SAMPLE"})`,
     );
   });
 }

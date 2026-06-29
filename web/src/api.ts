@@ -1,12 +1,12 @@
 import type {
   DayContent,
   HealthStatus,
+  HistoryDaySummary,
   MyLensArticleInput,
   MyLensJobCreated,
   MyLensJobStatus,
   PersonaDef,
   PersonaId,
-  TimeMachineEvent,
 } from "@prism/shared";
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
@@ -35,6 +35,6 @@ export const api = {
     }),
   myLensJob: (jobId: string) =>
     request<MyLensJobStatus>(`/api/my-lens/jobs/${jobId}`),
-  timeMachineCatalog: () => request<TimeMachineEvent[]>("/api/timemachine"),
-  timeMachineDay: (id: string) => request<DayContent>(`/api/timemachine/${id}`),
+  history: () => request<HistoryDaySummary[]>("/api/history"),
+  historyDay: (date: string) => request<DayContent>(`/api/history/${date}`),
 };

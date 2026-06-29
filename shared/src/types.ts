@@ -115,12 +115,13 @@ export interface DayContent {
   disclaimer: string;
 }
 
-/** Lightweight time-machine catalog entry. */
-export interface TimeMachineEvent {
-  id: string;
-  title: string;
+/** A daily briefing already generated and available for read-only history. */
+export interface HistoryDaySummary {
   date: string;
-  blurb: string;
+  generatedAt: string;
+  keyPointCount: number;
+  personaCount: number;
+  leadSummary: string;
 }
 
 export interface MyLensArticleInput {
@@ -147,6 +148,7 @@ export type MyLensJobPhase =
   | "queued"
   | "reading"
   | "validating"
+  | "summarizing"
   | "personas"
   | "scoring"
   | "complete"

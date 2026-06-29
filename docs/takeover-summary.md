@@ -1,6 +1,6 @@
 # Prism Takeover Summary
 
-Updated 2026-06-27 after the My Lens feature was implemented.
+Updated 2026-06-27 after the History and Your Moves UI revisions.
 
 ## Product
 
@@ -10,10 +10,11 @@ three workspaces:
 
 - **Today**: deterministically curates up to four market-moving articles, then
   asks the personas to react.
-- **My Lens**: accepts one to three user-provided finance articles as pasted
+- **Your Moves**: accepts up to five user-provided finance articles as pasted
   text or URLs, validates the first 1,500 characters, and runs valid articles
   through the same persona/divergence pipeline.
-- **Time machine**: replays bundled historical market events.
+- **History**: lists prior live daily briefings only when a generated cache file
+  already exists. It is strictly read-only and never generates a past date.
 
 The npm workspace contains `shared/`, `server/`, and `web/` packages. Core
 commands are `npm run dev`, `npm test`, `npm run typecheck`, and
@@ -44,14 +45,13 @@ commands are `npm run dev`, `npm test`, `npm run typecheck`, and
    A retry has a 60-second UI/server deadline and merges a valid POV back into
    the cached day without regenerating articles.
 
-## My Lens
+## Your Moves
 
 Relevant files:
 
-- `web/src/components/MyLensView.tsx`: one-to-three article editor, URL/text
-  detection, 1,500-character indicator, per-entry validation status, and
-  results rendering. Drafts, validation results, and generated analysis persist
-  in local storage until the user removes a generated article.
+- `web/src/components/MyLensView.tsx`: one compact URL/text composer feeding a
+  persistent five-item queue, 1,500-character indicators, per-entry validation
+  status, deletion, and result rendering.
 - `server/src/providers/articleReader.ts`: guarded HTTP(S) reader. It blocks
   credentials, localhost, private/non-public IPs, and validates every redirect;
   downloads at most 512 KB, parses HTML with `node-html-parser`, and preserves
@@ -59,7 +59,10 @@ Relevant files:
 - `server/src/providers/articleSummaryMarketData.ts`: hydrates the articles
   selected for Today with publisher takeaway bullets before personas run.
 - `server/src/pipeline/userArticles.ts`: truncation, deterministic finance-topic
-  validation, key-point construction, and persona analysis.
+  validation, neutral Owl Alpha headline/summary synthesis, key-point
+  construction, and persona analysis. Synthesis rewrites publisher headlines,
+  produces a 2–3 sentence summary and key facts, and falls back to complete
+  extracted sentences rather than displaying a raw 1,500-character slice.
 - `server/src/store/myLensJobs.ts`: in-memory 30-minute jobs, progress state,
   preserved article validation results, and sanitized provider errors.
 - `POST /api/my-lens/analyze`: accepts `{ articles: [{ id, value }] }` and
@@ -67,23 +70,32 @@ Relevant files:
 - `GET /api/my-lens/jobs/:jobId`: reports reading, validation, persona, and
   scoring progress, then returns per-entry statuses and any `DayContent` result.
 
-Invalid entries do not block valid entries in the same request. My Lens is not
-cached and currently waits up to 120 seconds after persona quorum to improve
-the chance of returning all five lenses. User article text is explicitly
+Invalid entries do not block valid entries in the same request. Your Moves is
+not written to daily History and currently waits up to 120 seconds after
+persona quorum to improve the chance of returning all five lenses. User article text is explicitly
 treated as untrusted source material in the persona system prompt.
 OpenRouter 429 responses stop after one request per persona and surface a
 specific rate-limit message instead of a generic internal error.
+
+Completed Your Moves analyses are memoized in memory for 30 minutes by the
+unchanged valid article set. Invalid additions are deliberately excluded from
+that key, so adding a 403/unreadable article reuses the original POVs and cannot
+change divergence. The client also preserves the existing analysis for the same
+valid article IDs across a server restart. Storage schema v2 keeps the article
+queue but invalidates legacy pre-synthesis results once.
 
 ## Frontend Notes
 
 - `Hero`, `KeyPointCard`, `CastStrip`, and `PersonaDrawer` are shared by all
   three workspaces.
+- The cast is presented in a responsive front-on pixel house. Available
+  personas enter through the right-hand door and settle into fixed activities.
 - The divergence label has an accessible hover/focus/tap tooltip that explains
   the 0-to-1 index and interprets the current value.
 - Missing persona cards never masquerade as neutral. Daily cards expose Retry;
-  My Lens partial results currently show unavailable lenses without retry.
-- My Lens drafts and generated results survive app-tab navigation and full page
-  reloads. Valid generated entries are read-only until explicitly removed.
+  Your Moves partial results currently show unavailable lenses without retry.
+- Your Moves queued articles and generated results survive app-tab navigation
+  and full page reloads until explicitly removed.
 
 ## API
 
@@ -92,22 +104,28 @@ specific rate-limit message instead of a generic internal error.
 - `GET /api/day/latest`
 - `POST /api/day/latest/personas/:personaId/retry`
 - `GET /api/day/:date`
+- `GET /api/history`
+- `GET /api/history/:date`
 - `POST /api/my-lens/analyze`
 - `GET /api/my-lens/jobs/:jobId`
-- `GET /api/timemachine`
-- `GET /api/timemachine/:id`
+
+`GET /api/day/:date` only accepts today's server-local date. Earlier and future
+dates cannot enter the generation pipeline.
 
 ## Verification
 
 At this handoff:
 
-- `npm test`: 12 files, 61 tests passed.
+- `npm test`: 12 files, 65 tests passed.
 - `npm run typecheck`: all workspaces passed.
 - `npm run build`: all workspaces passed.
 - `npm audit --omit=dev`: no production vulnerabilities.
-- Browser checks covered invalid text, the three-article cap, URL mode, tab
-  draft persistence, 390px layout, mixed valid/invalid submission, result
-  rendering, and the live progress/error state for a Yahoo Finance URL.
+- Browser checks covered the generated History catalog/detail flow, compact
+  article queue, reload persistence, deletion affordance, and 390px layouts.
+- The reported Yahoo article was also verified live: Owl Alpha produced a
+  rewritten neutral headline, a concise factual summary, and four key facts.
+  Re-running it with an invalid second URL kept the displayed divergence and
+  persona stances unchanged.
 - The exact Yahoo URL from the June 27 bug report was extracted and validated.
   OpenRouter was over its free-model quota, so the job preserved `VALID` for
   the article and returned the explicit rate-limit outcome in about four seconds.
@@ -119,7 +137,7 @@ At this handoff:
   source characters.
 - Some publishers block server-side article extraction or put useful content
   behind scripts/paywalls; those URLs return invalid/read errors.
-- My Lens persistence uses browser local storage and is scoped to that browser
+- Your Moves persistence uses browser local storage and is scoped to that browser
   profile; it does not sync between browsers or devices.
 - The active model can still return malformed JSON or upstream capacity errors.
   Retry, quorum, and unavailable states keep those failures explicit. Daily

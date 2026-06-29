@@ -4,7 +4,7 @@ import { fileURLToPath } from "node:url";
 import { config, isLiveMode } from "./config.js";
 import { logEvent } from "./logger.js";
 import { currentCalendarDate } from "./store/dailyStore.js";
-import { loadSampleDay, loadTimeMachineCatalog } from "./store/sampleData.js";
+import { loadSampleDay } from "./store/sampleData.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const CACHE_DIR = path.resolve(__dirname, "../cache");
@@ -41,13 +41,6 @@ export async function runStartupChecks(): Promise<void> {
     );
   } catch (err) {
     logEvent(`bundled sample failed: ${err}`);
-  }
-
-  try {
-    const events = await loadTimeMachineCatalog();
-    logEvent(`time machine · ${events.length} events`);
-  } catch (err) {
-    logEvent(`time machine catalog failed: ${err}`);
   }
 
   const cached = await listCachedDays();

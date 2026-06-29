@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { LlmRateLimitError, type LlmClient, type LlmMessage } from "../providers/llm.js";
+import { clearArticleAnalysisCacheForTests } from "../pipeline/userArticles.js";
 import {
   clearMyLensJobsForTests,
   getMyLensJob,
@@ -7,7 +8,7 @@ import {
 } from "./myLensJobs.js";
 
 function validPov(messages: LlmMessage[]): string {
-  const ids = [...(messages[1]?.content ?? "").matchAll(/^(article-\d+):/gm)]
+  const ids = [...(messages[1]?.content ?? "").matchAll(/^(article-[a-z0-9-]+):/gm)]
     .map((match) => match[1]);
   return JSON.stringify({
     text: "The article supports a measured reading of the market reaction.",
@@ -21,6 +22,26 @@ function validPov(messages: LlmMessage[]): string {
   });
 }
 
+function validSummary(messages: LlmMessage[]): string {
+  const ids = [
+    ...(messages[1]?.content ?? "").matchAll(
+      /^ID: (article-[a-z0-9-]+)$/gm,
+    ),
+  ].map((match) => match[1]);
+  return JSON.stringify({
+    articles: ids.map((id) => ({
+      id,
+      headline: "Company update shifts expectations across major financial markets",
+      summary:
+        "The article reports a company development with direct relevance to investors and the broader market. It identifies the financial event, the affected security, and the immediate market response.",
+      keyFacts: [
+        "The article describes a material company development.",
+        "Investors assessed the news during the market session.",
+      ],
+    })),
+  });
+}
+
 async function waitForJob(jobId: string) {
   await vi.waitFor(() => {
     expect(getMyLensJob(jobId)?.status).not.toBe("running");
@@ -28,12 +49,18 @@ async function waitForJob(jobId: string) {
   return getMyLensJob(jobId)!;
 }
 
-describe("My Lens jobs", () => {
-  beforeEach(() => clearMyLensJobsForTests());
+describe("Your Moves jobs", () => {
+  beforeEach(() => {
+    clearMyLensJobsForTests();
+    clearArticleAnalysisCacheForTests();
+  });
 
   it("completes asynchronously with persona output", async () => {
     const llm: LlmClient = {
       async generate(messages): Promise<string> {
+        if (messages[0]?.content.includes("neutral finance editor")) {
+          return validSummary(messages);
+        }
         return validPov(messages);
       },
     };
@@ -68,6 +95,6 @@ describe("My Lens jobs", () => {
     expect(finished.status).toBe("failed");
     expect(finished.error).toMatch(/rate-limited/i);
     expect(finished.result?.articles[0].status).toBe("valid");
-    expect(calls).toBe(5);
+    expect(calls).toBe(6);
   });
 });
