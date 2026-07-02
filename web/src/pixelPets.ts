@@ -1,263 +1,31 @@
 import type { PersonaId } from "@prism/shared";
-import { PERSONA_STYLE } from "./personaStyle";
 
-// Tamagotchi-style pixel creatures, one per persona. Each is a 12x12 grid with
-// two frames — a normal pose and a "squeezed" (squashed) pose — that alternate
-// for an idle bounce. They share a round body + two-pupil face so they read as
-// a family, but each has a name, a signature color, and an accessory:
-//   Blitz  (momentum)  — sunglasses (cool, chasing the move)
-//   Sprout (growth)    — tidy bowtie + a leaf (neat, long-term optimist)
-//   Penny  (value)     — big nerdy glasses, hugging a coin (margin of safety)
-//   Sage   (macro)     — monk-like hood (calm, watching what breaks)
-//   Nix    (contrarian)— a beanie, gaze turned away (faces the other way)
-//
-// Pixel legend (resolved to per-persona hex in PixelPet.tsx):
-//   .  transparent   B  body (signature color)   b  body shade
-//   A  accessory     a  accessory shade           F  accent (leaf/coin)
-//   W  eye white      D  pupil
-//   K  true black (sunglasses, glasses frames)    L  clear glass lens (see-through)
+// Every cast member uses the same 16x16 canvas, outline hierarchy, and
+// upper-left light source. Their outer contours deliberately differ so each
+// lens remains identifiable without relying on color alone.
 export type PetLegend =
-  | "."
-  | "B"
-  | "b"
-  | "A"
-  | "a"
-  | "F"
-  | "W"
-  | "D"
-  | "K"
-  | "L";
+  | "." // transparent
+  | "O" // global outline
+  | "B" // body base
+  | "b" // body shadow
+  | "H" // body highlight
+  | "A" // accessory base
+  | "a" // accessory highlight
+  | "F" // prop accent
+  | "W" // eye white
+  | "D" // pupil
+  | "K" // deep black
+  | "L"; // glass lens
 
 export interface PixelPet {
-  /** [normalFrame, squeezedFrame], each 16 rows x 16 chars. */
   frames: [string[], string[]];
 }
 
-// Each frame is hand-authored on a 16x16 grid (every row exactly 16 chars). The
-// higher resolution keeps eyes and accessories from collapsing into blobs. The
-// two frames differ mainly in the lower body (belly bulge + feet splay) so the
-// face stays steady — a gentle idle bounce rather than a jitter.
-// Eyes use W (white) with a D (pupil) for a friendly, clearly-readable face.
-
-const BLITZ: [string[], string[]] = [
-  // normal — black wrap sunglasses, small white glint on each lens
-  [
-    "................",
-    "................",
-    ".....AAAAAA.....",
-    "...BBBBBBBBBB...",
-    "..BBBBBBBBBBBB..",
-    "..BBBBBBBBBBBB..",
-    "..KKKKKKKKKKKK..",
-    "..BKKKKKKKKKKB..",
-    "..BBKKKBBKKKBB..",
-    "..BBBBBBBBBBBB..",
-    "..BBBBBBBBBBBB..",
-    "...BBBBBBBBBB...",
-    "....BBBBBBBB....",
-    "....bb....bb....",
-    "................",
-    "................",
-  ],
-  // squeezed
-  [
-    "................",
-    "................",
-    "................",
-    ".....AAAAAA.....",
-    "...BBBBBBBBBB...",
-    "..BBBBBBBBBBBB..",
-    "..KKKKKKKKKKKK..",
-    "..BWKKKKKKKKWB..",
-    "..BBKKKBBKKKBB..",
-    ".BBBBBBBBBBBBBB.",
-    ".BBBBBBBBBBBBBB.",
-    "..BBBBBBBBBBBB..",
-    "...BBBBBBBBBB...",
-    "...bb......bb...",
-    "................",
-    "................",
-  ],
-];
-
-const SPROUT: [string[], string[]] = [
-  // normal — sprout leaf on top, friendly eyes, tidy bowtie at the neck
-  [
-    ".......FF.......",
-    "......FFFF......",
-    ".......FF.......",
-    ".....BBBBBB.....",
-    "...BBBBBBBBBB...",
-    "..BBBBBBBBBBBB..",
-    "..BBWWBBBBWWBB..",
-    "..BBWDBBBBWDBB..",
-    "..BBBBBBBBBBBB..",
-    "..BBBBBBBBBBBB..",
-    "...BBBBBBBBBB...",
-    "....BBBBBBBB....",
-    "....AAaaaaAA....",
-    "....bb....bb....",
-    "................",
-    "................",
-  ],
-  // squeezed
-  [
-    "................",
-    ".......FF.......",
-    "......FFFF......",
-    ".......FF.......",
-    ".....BBBBBB.....",
-    "..BBBBBBBBBBBB..",
-    "..BBWWBBBBWWBB..",
-    "..BBWDBBBBWDBB..",
-    "..BBBBBBBBBBBB..",
-    ".BBBBBBBBBBBBBB.",
-    "..BBBBBBBBBBBB..",
-    "...BBBBBBBBBB...",
-    "...AAaaaaaaAA...",
-    "...bb......bb...",
-    "................",
-    "................",
-  ],
-];
-
-const PENNY: [string[], string[]] = [
-  // normal — big round nerdy glasses: black frames (K) on cols 2-5 and 8-11,
-  // clear lens (L) with the pupils (D) visible through them, black bridge.
-  // Coin (F) hugged at the belly.
-  [
-    "................",
-    ".....BBBBBB.....",
-    "...BBBBBBBBBB...",
-    "..BBBBBBBBBBBB..",
-    "..KKKKBBKKKKBB..",
-    "..KLLKBBKLLKBB..",
-    "..KLDKKKKLDKBB..",
-    "..KLLKBBKLLKBB..",
-    "..KKKKBBKKKKBB..",
-    "..BBBBBBBBBBBB..",
-    "...BBFFFFFFBB...",
-    "....BFFFFFFB....",
-    "....BBBBBBBB....",
-    "....bb....bb....",
-    "................",
-    "................",
-  ],
-  // squeezed
-  [
-    "................",
-    "................",
-    ".....BBBBBB.....",
-    "..BBBBBBBBBBBB..",
-    "..KKKKBBKKKKBB..",
-    "..KLLKBBKLLKBB..",
-    "..KLDKKKKLDKBB..",
-    "..KLLKBBKLLKBB..",
-    "..KKKKBBKKKKBB..",
-    ".BBBBBBBBBBBBBB.",
-    "...BBFFFFFFBB...",
-    "....BFFFFFFB....",
-    "....BBBBBBBB....",
-    "...bb......bb...",
-    "................",
-    "................",
-  ],
-];
-
-const SAGE: [string[], string[]] = [
-  // normal — monk-like hood (A) draped over head and shoulders, calm face
-  [
-    "................",
-    "....AAAAAAAA....",
-    "...AAAAAAAAAA...",
-    "..AAAAAAAAAAAA..",
-    "..AAABBBBBBAAA..",
-    "..AABBBBBBBBAA..",
-    "..AABWWBBWWBAA..",
-    "..AABWDBBWDBAA..",
-    "..AABBBBBBBBAA..",
-    "..AABBBBBBBBAA..",
-    "..AAABBBBBBAAA..",
-    "..AAAAAAAAAAAA..",
-    "...AAAAAAAAAA...",
-    "....bb....bb....",
-    "................",
-    "................",
-  ],
-  // squeezed
-  [
-    "................",
-    "................",
-    "....AAAAAAAA....",
-    "...AAAAAAAAAA...",
-    "..AAAAAAAAAAAA..",
-    "..AAABBBBBBAAA..",
-    "..AABBBBBBBBAA..",
-    "..AABWDBBWDBAA..",
-    "..AABBBBBBBBAA..",
-    "..AAABBBBBBAAA..",
-    "..AAAAAAAAAAAA..",
-    "..AAAAAAAAAAAA..",
-    "...AAAAAAAAAA...",
-    "...bb......bb...",
-    "................",
-    "................",
-  ],
-];
-
-const NIX: [string[], string[]] = [
-  // normal — slouchy beanie (A) with a pom, gaze shifted left (away from crowd)
-  [
-    ".......AA.......",
-    "....AAAAAAAA....",
-    "...AAAAAAAAAA...",
-    "...AAAAAAAAAA...",
-    "....BBBBBBBB....",
-    "..BBBBBBBBBBBB..",
-    "..BWWBBWWBBBBB..",
-    "..BWDBBWDBBBBB..",
-    "..BBBBBBBBBBBB..",
-    "..BBBBBBBBBBBB..",
-    "...BBBBBBBBBB...",
-    "....BBBBBBBB....",
-    "....BBBBBBBB....",
-    "....bb....bb....",
-    "................",
-    "................",
-  ],
-  // squeezed
-  [
-    "................",
-    ".......AA.......",
-    "....AAAAAAAA....",
-    "...AAAAAAAAAA...",
-    "...AAAAAAAAAA...",
-    "..BBBBBBBBBBBB..",
-    "..BWWBBWWBBBBB..",
-    "..BWDBBWDBBBBB..",
-    "..BBBBBBBBBBBB..",
-    ".BBBBBBBBBBBBBB.",
-    "..BBBBBBBBBBBB..",
-    "...BBBBBBBBBB...",
-    "....BBBBBBBB....",
-    "...bb......bb...",
-    "................",
-    "................",
-  ],
-];
-
-export const PETS: Record<PersonaId, PixelPet> = {
-  momentum: { frames: BLITZ },
-  growth: { frames: SPROUT },
-  value: { frames: PENNY },
-  macro: { frames: SAGE },
-  contrarian: { frames: NIX },
-};
-
-/** Derive a pet's color set from its persona signature color. */
 export interface PetPalette {
+  O: string;
   B: string;
   b: string;
+  H: string;
   A: string;
   a: string;
   F: string;
@@ -267,37 +35,238 @@ export interface PetPalette {
   L: string;
 }
 
-// Lighten/darken a #rrggbb toward white/black by a 0..1 amount.
-function shade(hex: string, amt: number): string {
-  const n = parseInt(hex.slice(1), 16);
-  let r = (n >> 16) & 255;
-  let g = (n >> 8) & 255;
-  let b = n & 255;
-  if (amt >= 0) {
-    r += (255 - r) * amt;
-    g += (255 - g) * amt;
-    b += (255 - b) * amt;
-  } else {
-    const k = 1 + amt;
-    r *= k;
-    g *= k;
-    b *= k;
+function makePet(
+  base: string[],
+  alternateRows: Partial<Record<number, string>>,
+): PixelPet {
+  const alternate = base.map((row, index) => alternateRows[index] ?? row);
+  for (const [frameIndex, frame] of [base, alternate].entries()) {
+    const invalidRow = frame.findIndex((row) => row.length !== 16);
+    if (frame.length !== 16 || invalidRow !== -1) {
+      throw new Error(
+        `Pixel pet frame ${frameIndex}, row ${invalidRow} must use a 16x16 grid`,
+      );
+    }
   }
-  const h = (v: number) => Math.round(v).toString(16).padStart(2, "0");
-  return `#${h(r)}${h(g)}${h(b)}`;
+  return { frames: [base, alternate] };
 }
 
+// Blitz: angular speed tufts, wraparound shades, and a wide forward stance.
+const BLITZ = makePet(
+  [
+    "................",
+    ".....OO...OO....",
+    "....OHHOOHHO....",
+    "...OOBBBBBBOO...",
+    "..OOBBBBBBBBOO..",
+    ".OOBBBBBBBBBBOO.",
+    ".OOKKKKKKKKKKOO.",
+    ".OOBKKKKKKKKBOO.",
+    ".OOBBKKBBKKBBOO.",
+    ".OOBBBBBBBBBBOO.",
+    "..OOBBBBBBBBOO..",
+    "...OOBBBBBBOO...",
+    "....OOBBBBOO....",
+    "...OOOb..bOOO...",
+    "...OO......OO...",
+    "................",
+  ],
+  {
+    1: "....OO....OO....",
+    2: "...OHHOOOOHHO...",
+    13: "..OOOb....bOOO..",
+    14: "..OO........OO..",
+  },
+);
+
+// Sprout: a narrow stem silhouette, animated leaf, and tidy dark-green bow.
+const SPROUT = makePet(
+  [
+    "......OFFO......",
+    ".....OFFHFO.....",
+    "......OFO.......",
+    "......OBO.......",
+    "....OOBBBBOO....",
+    "...OOBBBBBBOO...",
+    "..OOBHBBBBBBOO..",
+    "..OOBWWBBWWBOO..",
+    "..OOBWDBBWDBOO..",
+    "...OOBBBBBBOO...",
+    "...OOBBBBBBOO...",
+    "....OOBBBBOO....",
+    "....OOAAAAOO....",
+    "...OOAb..bAOO...",
+    "...OO......OO...",
+    "................",
+  ],
+  {
+    0: ".......OFFO.....",
+    1: "......OFHHFO....",
+    2: ".......OFO......",
+  },
+);
+
+// Penny: a stable square silhouette, oversized glasses, and a guarded coin.
+const PENNY = makePet(
+  [
+    "................",
+    "...OOOOOOOOOO...",
+    "..OOBBBBBBBBOO..",
+    ".OOBBBBBBBBBBOO.",
+    ".OOKKKKBBKKKKOO.",
+    ".OOKLLKBBKLLKOO.",
+    ".OOKLDKKKKLDKOO.",
+    ".OOKLLKBBKLLKOO.",
+    ".OOKKKKBBKKKKOO.",
+    ".OOBBBBBBBBBBOO.",
+    ".OOBBBFFFFBBBOO.",
+    ".OOBBFFFFFFBBOO.",
+    "..OOBBFFFFBBOO..",
+    "..OOBBBBBBBBOO..",
+    ".OOObb....bbOOO.",
+    "..OO........OO..",
+  ],
+  {
+    5: ".OOKHLKBBKLLKOO.",
+    10: ".OOBBBHFFFBBBOO.",
+    14: ".OOOb......bOOO.",
+  },
+);
+
+// Sage: a tapered hood and robe, with a slow blink instead of a body bounce.
+const SAGE = makePet(
+  [
+    "......OOOO......",
+    ".....OAAAAO.....",
+    "....OAAHAAAO....",
+    "...OAAABBAAAO...",
+    "..OAAABBBBAAAO..",
+    ".OAAABBBBBBAAAO.",
+    ".OAABWWBBWWBAAO.",
+    ".OAABWDBBWDBAAO.",
+    ".OAABBBBBBBBAAO.",
+    "..OAABBBBBBAAO..",
+    "..OAAABBBBAAAO..",
+    "...OAAAAAAAAO...",
+    "...OOAAAAAAOO...",
+    "....OOb..bOO....",
+    "....OO....OO....",
+    "................",
+  ],
+  {
+    6: ".OAABBBBBBBBAAO.",
+    7: ".OAABDDBBDDBAAO.",
+  },
+);
+
+// Nix: an off-center beanie, side-eye, and an intentionally uneven stance.
+const NIX = makePet(
+  [
+    "....OO..........",
+    "...OAAO.........",
+    "..OAAAAOO.......",
+    ".OOAAAAAAAAOO...",
+    "..OOaaaaaaOO....",
+    "...OOBBBBBBBOO..",
+    "..OOBBBBBBBBBOO.",
+    ".OOBWWBBBBBBBBO.",
+    ".OOBWDBBBBBBBBO.",
+    ".OOBBBBBBBBBBBO.",
+    "..OOBBBBBBBBOO..",
+    "...OOBBBBBBOO...",
+    "....OOBBBBOO....",
+    "...OOOb..bOOO...",
+    "..OO........OO..",
+    "................",
+  ],
+  {
+    0: "...OO...........",
+    1: "..OAAO..........",
+    2: ".OAAAAOO........",
+    8: ".OOBDBBBBBBBBBO.",
+    14: ".OO..........OO.",
+  },
+);
+
+export const PETS: Record<PersonaId, PixelPet> = {
+  momentum: BLITZ,
+  growth: SPROUT,
+  value: PENNY,
+  macro: SAGE,
+  contrarian: NIX,
+};
+
+// A fixed, compact palette keeps every sprite readable across the dark room,
+// sesame room, and monochrome cast cards. Shadows hue-shift cooler or redder;
+// highlights move warmer toward the shared upper-left light.
+const PET_PALETTES: Record<PersonaId, PetPalette> = {
+  momentum: {
+    O: "#231c27",
+    B: "#f5a524",
+    b: "#b85a2d",
+    H: "#ffd166",
+    A: "#3c3544",
+    a: "#686071",
+    F: "#fff0b3",
+    W: "#fff8df",
+    D: "#17131b",
+    K: "#100e13",
+    L: "#ffe39a",
+  },
+  growth: {
+    O: "#24231d",
+    B: "#e8d44d",
+    b: "#92883a",
+    H: "#fff28a",
+    A: "#386553",
+    a: "#65a369",
+    F: "#70bd62",
+    W: "#fffbe6",
+    D: "#1b1a16",
+    K: "#12110e",
+    L: "#f4efad",
+  },
+  value: {
+    O: "#211f31",
+    B: "#8a8fff",
+    b: "#5658a9",
+    H: "#c9c6ff",
+    A: "#3b395f",
+    a: "#6c6a91",
+    F: "#f0bf4f",
+    W: "#f5f2ff",
+    D: "#171522",
+    K: "#100f18",
+    L: "#cfd1ff",
+  },
+  macro: {
+    O: "#18252e",
+    B: "#4cc2e0",
+    b: "#287c9d",
+    H: "#9ce8f1",
+    A: "#294b68",
+    a: "#4d7c91",
+    F: "#d1f4f5",
+    W: "#eefcfc",
+    D: "#111b21",
+    K: "#0d1419",
+    L: "#b7edf2",
+  },
+  contrarian: {
+    O: "#2a1d2a",
+    B: "#e26fd0",
+    b: "#994778",
+    H: "#f5addf",
+    A: "#4e344c",
+    a: "#7d526f",
+    F: "#f0c45f",
+    W: "#fff1fa",
+    D: "#1e141e",
+    K: "#130d13",
+    L: "#f0b9e3",
+  },
+};
+
 export function petPalette(id: PersonaId): PetPalette {
-  const base = PERSONA_STYLE[id].color;
-  return {
-    B: base,
-    b: shade(base, -0.28), // body shade
-    A: shade(base, -0.55), // accessory (dark, reads as black-ish object)
-    a: shade(base, -0.4), // accessory highlight
-    F: shade(base, 0.45), // leaf/coin accent (light tint of the color)
-    W: "#0e0e12", // eye/lens (dark on the colored body)
-    D: "#0e0e12", // pupil
-    K: "#0a0a0c", // true black — sunglasses, glasses frames
-    L: shade(base, 0.62), // clear glass lens — light tint of the body (see-through)
-  };
+  return PET_PALETTES[id];
 }

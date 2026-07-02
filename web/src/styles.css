@@ -921,7 +921,7 @@ button {
   flex-shrink: 0;
 }
 
-/* ---- Pixel personas (Tamagotchi-style) ------------------------------------ */
+/* ---- Pixel personas -------------------------------------------------------- */
 .pixelpet {
   position: relative;
   display: inline-block;
@@ -935,7 +935,7 @@ button {
   /* shape is drawn entirely via box-shadow from PixelPet.tsx */
   background: transparent;
 }
-/* little LCD screen the pet lives in, inside the cast card */
+/* A quiet pixel preview inside each cast card. */
 .petscreen {
   width: 64px;
   height: 64px;
@@ -972,82 +972,116 @@ button {
   margin-top: 48px;
 }
 
-/* ---- Cast house: available lenses arrive through the right-hand door ------ */
+/* ---- Cast house: strict front plane, 4px construction grid ---------------- */
 .habitat {
+  --room-outline: #17131c;
+  --room-wall: #2d2834;
+  --room-wall-hi: #393240;
+  --room-wall-shadow: #211d28;
+  --room-trim: #5b4d61;
+  --room-floor: #493744;
+  --room-floor-hi: #624856;
+  --room-wood: #765246;
+  --room-wood-hi: #a27355;
+  --room-teal: #3f6670;
+  --room-teal-hi: #66909a;
+  --room-plum: #6b4668;
+  --room-plum-hi: #95628b;
+  --room-green: #46705b;
+  --room-green-hi: #72a06d;
+  --room-sky: #182338;
+  --room-sky-hi: #283a55;
+  --room-light: #f1ca6f;
+  --room-paper: #ded5bd;
   position: relative;
-  height: 244px;
+  height: 256px;
   margin-bottom: 14px;
-  border: 1px solid var(--line);
-  border-radius: 6px;
-  background: #121116;
+  border: 4px solid var(--room-outline);
+  border-radius: 4px;
+  background: var(--room-wall);
   overflow: hidden;
   isolation: isolate;
   image-rendering: pixelated;
+  box-shadow:
+    inset 4px 4px 0 color-mix(in srgb, var(--room-wall-hi) 75%, transparent),
+    4px 4px 0 color-mix(in srgb, var(--room-outline) 25%, transparent);
 }
 
 .habitat::before {
   content: "";
   position: absolute;
   inset: 0 0 auto;
-  height: 9px;
+  height: 12px;
   z-index: 8;
   background: repeating-linear-gradient(
     90deg,
-    #323039 0 24px,
-    #25242b 24px 48px
+    var(--room-trim) 0 28px,
+    var(--room-wall-shadow) 28px 32px,
+    color-mix(in srgb, var(--room-trim) 78%, var(--room-wall)) 32px 60px,
+    var(--room-outline) 60px 64px
   );
-  border-bottom: 3px solid #09090b;
+  border-bottom: 4px solid var(--room-outline);
 }
 
 .habitat__wall {
   position: absolute;
   left: 0;
   right: 0;
-  top: 9px;
-  bottom: 82px;
+  top: 12px;
+  bottom: 88px;
   z-index: 0;
   background:
-    linear-gradient(rgba(255, 255, 255, 0.025) 2px, transparent 2px) 0 0 / 100% 28px,
-    #17161c;
-  border-bottom: 4px solid #08080a;
+    repeating-linear-gradient(
+      90deg,
+      transparent 0 60px,
+      color-mix(in srgb, var(--room-wall-shadow) 60%, transparent) 60px 64px
+    ),
+    repeating-linear-gradient(
+      0deg,
+      var(--room-wall-hi) 0 4px,
+      var(--room-wall) 4px 32px
+    );
+  border-bottom: 4px solid var(--room-outline);
 }
 
 .habitat__floor {
   position: absolute;
   inset: auto 0 0;
-  height: 82px;
+  height: 88px;
   z-index: 1;
   background:
     repeating-linear-gradient(
       90deg,
-      transparent 0 78px,
-      rgba(0, 0, 0, 0.3) 78px 81px
+      transparent 0 60px,
+      color-mix(in srgb, var(--room-outline) 55%, transparent) 60px 64px
     ),
     repeating-linear-gradient(
       0deg,
-      #242028 0 20px,
-      #29242e 20px 22px,
-      #1c1a20 22px 24px
+      var(--room-floor-hi) 0 4px,
+      var(--room-floor) 4px 24px,
+      var(--room-wall-shadow) 24px 28px
     );
-  box-shadow: inset 0 5px #100f13;
+  box-shadow: inset 0 4px var(--room-floor-hi);
 }
 
 .habitat__window {
   position: absolute;
-  top: 25px;
-  left: 5%;
-  width: 132px;
-  height: 76px;
-  background: #171f29;
-  border: 6px solid #34323b;
-  box-shadow: 0 0 0 3px #09090b, inset 0 0 0 2px #62616b;
+  top: 28px;
+  left: 4%;
+  width: 128px;
+  height: 80px;
+  background: var(--room-sky);
+  border: 4px solid var(--room-outline);
+  box-shadow:
+    inset 4px 4px 0 var(--room-sky-hi),
+    8px 8px 0 var(--room-wall-shadow);
 }
 .habitat__window::before,
 .habitat__window::after {
   content: "";
   position: absolute;
   z-index: 2;
-  background: #34323b;
+  background: var(--room-outline);
 }
 .habitat__window::before {
   top: 0;
@@ -1065,101 +1099,165 @@ button {
 }
 .habitat__window-moon {
   position: absolute;
-  top: 9px;
+  top: 12px;
   right: 16px;
-  width: 13px;
-  height: 13px;
-  background: #d9d5bd;
-  box-shadow: -3px 3px 0 #171f29;
+  width: 16px;
+  height: 16px;
+  background: var(--room-light);
+  box-shadow: -4px 4px 0 var(--room-sky);
+}
+.habitat__window-star {
+  position: absolute;
+  top: 16px;
+  left: 20px;
+  width: 4px;
+  height: 4px;
+  background: var(--room-paper);
+  box-shadow:
+    20px 20px 0 var(--room-paper),
+    4px 36px 0 color-mix(in srgb, var(--room-paper) 70%, transparent);
 }
 .habitat__window-sill {
   position: absolute;
   left: -12px;
   right: -12px;
   bottom: -12px;
-  height: 7px;
+  height: 8px;
   z-index: 3;
-  background: #58535e;
-  border-bottom: 3px solid #17161c;
+  background: var(--room-trim);
+  border-bottom: 4px solid var(--room-outline);
+}
+
+.habitat__lamp {
+  position: absolute;
+  top: 28px;
+  left: 21%;
+  width: 36px;
+  height: 28px;
+  background: var(--room-light);
+  border: 4px solid var(--room-outline);
+  clip-path: polygon(25% 0, 75% 0, 100% 100%, 0 100%);
+  box-shadow: 4px 4px 0 var(--room-wall-shadow);
+}
+.habitat__lamp span {
+  position: absolute;
+  left: 12px;
+  top: 24px;
+  width: 4px;
+  height: 28px;
+  background: var(--room-wood-hi);
+  box-shadow:
+    4px 0 0 var(--room-wood),
+    -4px 28px 0 var(--room-outline),
+    0 28px 0 var(--room-outline),
+    4px 28px 0 var(--room-outline),
+    8px 28px 0 var(--room-outline);
 }
 
 .habitat__shelf {
   position: absolute;
-  top: 39px;
+  top: 76px;
   left: 26%;
-  width: 136px;
-  height: 7px;
-  background: #5c4f55;
-  border-bottom: 3px solid #09090b;
+  width: 116px;
+  height: 8px;
+  background: var(--room-wood-hi);
+  border: 4px solid var(--room-outline);
+  border-top: 0;
 }
 .habitat__shelf::before,
 .habitat__shelf::after {
   content: "";
   position: absolute;
-  top: 7px;
-  width: 7px;
+  top: 4px;
+  width: 8px;
   height: 12px;
-  background: #343039;
+  background: var(--room-wood);
+  border-bottom: 4px solid var(--room-outline);
 }
-.habitat__shelf::before { left: 13px; }
-.habitat__shelf::after { right: 13px; }
+.habitat__shelf::before { left: 12px; }
+.habitat__shelf::after { right: 12px; }
 .habitat__shelf span {
   position: relative;
   display: inline-block;
   width: 12px;
-  height: 25px;
-  margin: -25px 2px 0 7px;
+  height: 28px;
+  margin: -28px 0 0 8px;
   vertical-align: top;
-  background: #6f6773;
-  border: 2px solid #0a0a0c;
+  background: var(--room-plum-hi);
+  border: 4px solid var(--room-outline);
+  border-bottom: 0;
 }
 .habitat__shelf span:nth-child(2) {
-  height: 19px;
-  margin-top: -19px;
-  background: #3f6870;
+  height: 20px;
+  margin-top: -20px;
+  background: var(--room-teal-hi);
 }
 .habitat__shelf span:nth-child(3) {
-  height: 23px;
-  margin-top: -23px;
-  background: #8b6e52;
+  height: 24px;
+  margin-top: -24px;
+  background: var(--room-light);
 }
 .habitat__shelf span:nth-child(4) {
-  width: 26px;
+  width: 24px;
   height: 16px;
   margin-top: -16px;
-  background: #554765;
+  background: var(--room-plum);
 }
 
 .habitat__picture {
   position: absolute;
-  top: 27px;
-  left: 47%;
+  top: 28px;
+  left: 44%;
   width: 72px;
-  height: 57px;
-  padding: 6px;
-  background: #302d35;
-  border: 3px solid #08080a;
-  box-shadow: inset 0 0 0 2px #5c5862;
+  height: 64px;
+  background: var(--room-sky);
+  border: 4px solid var(--room-outline);
+  box-shadow:
+    inset 4px 4px 0 var(--room-sky-hi),
+    4px 4px 0 var(--room-wall-shadow);
+}
+.habitat__picture::before {
+  content: "";
+  position: absolute;
+  left: 12px;
+  top: 16px;
+  width: 20px;
+  height: 24px;
+  border: 4px solid var(--room-paper);
+  clip-path: polygon(50% 0, 100% 100%, 0 100%);
 }
 .habitat__picture span {
-  display: block;
-  width: 100%;
-  height: 100%;
-  background:
-    linear-gradient(145deg, transparent 0 48%, #72727b 49% 57%, transparent 58%),
-    linear-gradient(35deg, transparent 0 46%, #4b6868 47% 61%, transparent 62%),
-    #171920;
+  position: absolute;
+  left: 36px;
+  width: 24px;
+  height: 4px;
+  background: var(--room-paper);
+}
+.habitat__picture span:nth-child(1) { top: 12px; }
+.habitat__picture span:nth-child(2) { top: 20px; opacity: 0.82; }
+.habitat__picture span:nth-child(3) { top: 28px; opacity: 0.64; }
+.habitat__picture span:nth-child(4) { top: 36px; opacity: 0.46; }
+.habitat__picture span:nth-child(5) { top: 44px; opacity: 0.3; }
+
+.habitat__picture::after {
+  content: "";
+  position: absolute;
+  left: 4px;
+  top: 28px;
+  width: 12px;
+  height: 4px;
+  background: var(--room-paper);
 }
 
 .habitat__clock {
   position: absolute;
-  top: 25px;
+  top: 32px;
   right: 23%;
-  width: 42px;
-  height: 42px;
-  background: #cbc7bc;
-  border: 5px solid #34323a;
-  box-shadow: 0 0 0 3px #09090b;
+  width: 40px;
+  height: 40px;
+  background: var(--room-paper);
+  border: 4px solid var(--room-outline);
+  box-shadow: 4px 4px 0 var(--room-wall-shadow);
 }
 .habitat__clock::before,
 .habitat__clock::after {
@@ -1167,280 +1265,259 @@ button {
   position: absolute;
   left: 50%;
   top: 50%;
-  width: 3px;
-  height: 10px;
-  background: #17161c;
-  transform-origin: 50% 1px;
+  background: var(--room-outline);
 }
-.habitat__clock::before { transform: translate(-50%, -1px) rotate(35deg); }
-.habitat__clock::after { transform: translate(-50%, -1px) rotate(125deg); }
+.habitat__clock::before {
+  width: 4px;
+  height: 12px;
+  transform: translate(-2px, -8px);
+}
+.habitat__clock::after {
+  width: 12px;
+  height: 4px;
+  transform: translate(-2px, 0);
+}
 
 .habitat__rug {
   position: absolute;
-  left: 15%;
-  right: 15%;
-  bottom: 11px;
-  height: 45px;
+  left: 14%;
+  right: 14%;
+  bottom: 12px;
+  height: 48px;
   z-index: 2;
-  background: repeating-linear-gradient(
-    90deg,
-    #413447 0 22px,
-    #6b4e5f 22px 26px,
-    #2d3d48 26px 50px,
-    #86704f 50px 54px
-  );
-  border: 4px solid #111015;
-  box-shadow: inset 0 0 0 3px rgba(255, 255, 255, 0.08);
+  background:
+    repeating-linear-gradient(
+      90deg,
+      transparent 0 24px,
+      var(--room-light) 24px 28px,
+      transparent 28px 52px,
+      var(--room-teal-hi) 52px 56px
+    ),
+    var(--room-plum);
+  border: 4px solid var(--room-outline);
+  box-shadow: inset 4px 4px 0 var(--room-plum-hi);
 }
 
 .habitat__radio {
   position: absolute;
-  left: 7%;
-  bottom: 32px;
-  width: 48px;
-  height: 36px;
+  left: 6%;
+  bottom: 28px;
+  width: 52px;
+  height: 40px;
   z-index: 3;
-  background: #4d4851;
-  border: 3px solid #09090b;
-  box-shadow: inset 0 -5px #2d2a30;
+  background: var(--room-wood);
+  border: 4px solid var(--room-outline);
+  box-shadow:
+    inset 4px 4px 0 var(--room-wood-hi),
+    4px 4px 0 color-mix(in srgb, var(--room-outline) 70%, transparent);
 }
 .habitat__radio::before {
   content: "";
   position: absolute;
-  left: 7px;
-  top: 7px;
-  width: 16px;
-  height: 16px;
-  background: #242129;
-  border: 2px solid #817984;
+  left: 8px;
+  top: 8px;
+  width: 20px;
+  height: 12px;
+  background: var(--room-sky);
+  border: 4px solid var(--room-outline);
 }
 .habitat__radio span {
   position: absolute;
-  right: 7px;
+  right: 8px;
   top: 8px;
-  width: 5px;
-  height: 5px;
-  background: #d5a84b;
-  box-shadow: 0 10px 0 #252329;
+  width: 8px;
+  height: 8px;
+  background: var(--room-light);
+  box-shadow: 0 16px 0 var(--room-outline);
 }
 
 .habitat__plant {
   position: absolute;
   left: 27%;
-  bottom: 34px;
-  width: 38px;
-  height: 72px;
-  z-index: 2;
+  bottom: 28px;
+  width: 48px;
+  height: 76px;
+  z-index: 3;
 }
 .habitat__plant-leaves {
   position: absolute;
-  left: 15px;
+  left: 20px;
   top: 0;
-  width: 11px;
-  height: 46px;
-  background: #4d745f;
+  width: 12px;
+  height: 44px;
+  background: var(--room-green);
+  border: 4px solid var(--room-outline);
   box-shadow:
-    -12px 8px 0 #63826b,
-    12px 13px 0 #3c6658,
-    -8px 25px 0 #486e5b,
-    10px 30px 0 #69866d;
+    -16px 8px 0 -4px var(--room-green-hi),
+    -16px 8px 0 0 var(--room-outline),
+    16px 12px 0 -4px var(--room-green),
+    16px 12px 0 0 var(--room-outline),
+    -12px 28px 0 -4px var(--room-green),
+    -12px 28px 0 0 var(--room-outline),
+    12px 32px 0 -4px var(--room-green-hi),
+    12px 32px 0 0 var(--room-outline);
 }
 .habitat__plant-pot {
   position: absolute;
   left: 4px;
-  right: 0;
+  right: 4px;
   bottom: 0;
-  height: 24px;
-  background: #78574f;
-  border: 3px solid #0a090b;
-  border-top-width: 6px;
-  clip-path: polygon(0 0, 100% 0, 84% 100%, 16% 100%);
+  height: 28px;
+  background: var(--room-wood);
+  border: 4px solid var(--room-outline);
+  box-shadow: inset 4px 4px 0 var(--room-wood-hi);
+  clip-path: polygon(0 0, 100% 0, 88% 100%, 12% 100%);
 }
 
 .habitat__table {
   position: absolute;
   left: 42%;
-  bottom: 29px;
+  bottom: 28px;
   width: 104px;
-  height: 47px;
+  height: 44px;
   z-index: 3;
-  background: #645258;
-  border: 3px solid #09090b;
+  background: var(--room-wood);
+  border: 4px solid var(--room-outline);
   border-bottom: 0;
-  box-shadow: inset 0 -7px #40363b;
+  box-shadow: inset 4px 4px 0 var(--room-wood-hi);
 }
 .habitat__table::before,
 .habitat__table::after {
   content: "";
   position: absolute;
-  bottom: -18px;
+  bottom: -20px;
   width: 8px;
-  height: 18px;
-  background: #332b30;
-  border: 2px solid #09090b;
+  height: 20px;
+  background: var(--room-wood);
+  border: 4px solid var(--room-outline);
   border-top: 0;
 }
 .habitat__table::before { left: 8px; }
 .habitat__table::after { right: 8px; }
 .habitat__table span {
   position: absolute;
-  top: -9px;
+  top: -12px;
   left: 24px;
-  width: 43px;
-  height: 10px;
-  background: #d0c9b5;
-  border: 2px solid #09090b;
-  transform: rotate(-3deg);
+  width: 44px;
+  height: 12px;
+  background: var(--room-paper);
+  border: 4px solid var(--room-outline);
 }
 
 .habitat__sofa {
   position: absolute;
   left: 57%;
-  bottom: 29px;
-  width: 128px;
-  height: 64px;
+  bottom: 24px;
+  width: 136px;
+  height: 72px;
   z-index: 2;
-  background: #3e5360;
-  border: 4px solid #09090b;
-  box-shadow: inset 0 -12px #2b3942;
+  background: var(--room-teal);
+  border: 4px solid var(--room-outline);
+  box-shadow:
+    inset 4px 4px 0 var(--room-teal-hi),
+    8px 8px 0 color-mix(in srgb, var(--room-outline) 55%, transparent);
 }
 .habitat__sofa::before,
 .habitat__sofa::after {
   content: "";
   position: absolute;
   bottom: 12px;
-  width: 20px;
-  height: 34px;
-  background: #536b76;
-  border: 3px solid #09090b;
+  width: 24px;
+  height: 40px;
+  background: var(--room-teal-hi);
+  border: 4px solid var(--room-outline);
 }
-.habitat__sofa::before { left: -14px; }
-.habitat__sofa::after { right: -14px; }
+.habitat__sofa::before { left: -16px; }
+.habitat__sofa::after { right: -16px; }
 .habitat__sofa span {
   position: absolute;
   left: 8px;
   right: 8px;
   bottom: 4px;
-  height: 20px;
-  border-top: 3px solid #09090b;
-  background: #49616d;
+  height: 24px;
+  border-top: 4px solid var(--room-outline);
+  background: var(--room-teal-hi);
 }
 
 .habitat__cushion {
   position: absolute;
-  left: 77%;
-  bottom: 24px;
-  width: 67px;
+  left: 78%;
+  bottom: 20px;
+  width: 64px;
   height: 20px;
   z-index: 3;
-  background: #624667;
-  border: 3px solid #09090b;
-  box-shadow: inset 0 -5px #3c2f42;
+  background: var(--room-plum);
+  border: 4px solid var(--room-outline);
+  box-shadow: inset 4px 4px 0 var(--room-plum-hi);
 }
 
 .habitat__door {
   position: absolute;
-  top: 45px;
-  right: 18px;
-  bottom: 26px;
-  width: 72px;
+  top: 40px;
+  right: 12px;
+  bottom: 20px;
+  width: 76px;
   z-index: 2;
-  background: #08090d;
-  border: 6px solid #3f3a43;
+  background: var(--room-sky);
+  border: 4px solid var(--room-outline);
   border-bottom: 0;
-  box-shadow: 0 0 0 3px #09090b, inset 14px 0 #10131a;
+  box-shadow:
+    inset 12px 0 var(--room-sky-hi),
+    -4px 0 var(--room-trim),
+    4px 0 var(--room-trim),
+    8px 8px 0 var(--room-wall-shadow);
 }
 .habitat__door::before {
   content: "";
   position: absolute;
-  top: -6px;
-  left: -14px;
-  right: -14px;
-  height: 9px;
-  background: #57515a;
-  border-bottom: 3px solid #09090b;
+  top: -12px;
+  left: -12px;
+  right: -12px;
+  height: 12px;
+  background: var(--room-trim);
+  border: 4px solid var(--room-outline);
 }
 .habitat__door-light {
   position: absolute;
-  top: 20px;
+  top: 24px;
   right: 8px;
-  width: 7px;
-  height: 7px;
-  background: #e6bd67;
-  box-shadow: 0 0 12px rgba(230, 189, 103, 0.65);
+  width: 8px;
+  height: 8px;
+  background: var(--room-light);
+  box-shadow:
+    -4px 4px 0 color-mix(in srgb, var(--room-light) 35%, transparent),
+    -8px 8px 0 color-mix(in srgb, var(--room-light) 18%, transparent);
 }
 .habitat__door-step {
   position: absolute;
-  left: -11px;
-  right: -11px;
-  bottom: -9px;
-  height: 9px;
-  background: #6a626b;
-  border-top: 3px solid #09090b;
+  left: -12px;
+  right: -12px;
+  bottom: -12px;
+  height: 12px;
+  background: var(--room-trim);
+  border-top: 4px solid var(--room-outline);
 }
 
 :root[data-theme="light"] .habitat {
-  border-color: rgba(75, 63, 48, 0.22);
-  background: #d2c6ad;
-}
-:root[data-theme="light"] .habitat::before {
-  background: repeating-linear-gradient(
-    90deg,
-    #a5977f 0 24px,
-    #b8aa91 24px 48px
-  );
-  border-bottom-color: #756753;
-}
-:root[data-theme="light"] .habitat__wall {
-  background:
-    linear-gradient(rgba(88, 72, 52, 0.08) 2px, transparent 2px) 0 0 / 100% 28px,
-    #ddd1b8;
-  border-bottom-color: #796851;
-}
-:root[data-theme="light"] .habitat__floor {
-  background:
-    repeating-linear-gradient(
-      90deg,
-      transparent 0 78px,
-      rgba(82, 61, 42, 0.22) 78px 81px
-    ),
-    repeating-linear-gradient(
-      0deg,
-      #b99d78 0 20px,
-      #c8ad87 20px 22px,
-      #aa8d6c 22px 24px
-    );
-  box-shadow: inset 0 5px #826d54;
-}
-:root[data-theme="light"] .habitat__window {
-  background: #adbfbd;
-  border-color: #8e806b;
-  box-shadow: 0 0 0 3px #655847, inset 0 0 0 2px #d9d0bd;
-}
-:root[data-theme="light"] .habitat__window::before,
-:root[data-theme="light"] .habitat__window::after {
-  background: #8e806b;
-}
-:root[data-theme="light"] .habitat__window-moon {
-  background: #f0d47a;
-  box-shadow: -3px 3px 0 #adbfbd;
-}
-:root[data-theme="light"] .habitat__window-sill {
-  background: #9b8b73;
-  border-bottom-color: #655847;
-}
-:root[data-theme="light"] .habitat__door {
-  background: #665747;
-  border-color: #8b7a65;
-  box-shadow: 0 0 0 3px #554838, inset 14px 0 #75624e;
-}
-:root[data-theme="light"] .habitat__door::before {
-  background: #9b8b74;
-  border-bottom-color: #554838;
-}
-:root[data-theme="light"] .habitat__door-step {
-  background: #9d8b72;
-  border-top-color: #554838;
+  --room-outline: #4b3b35;
+  --room-wall: #d7c9a8;
+  --room-wall-hi: #e6dabd;
+  --room-wall-shadow: #b6a486;
+  --room-trim: #90765f;
+  --room-floor: #aa805e;
+  --room-floor-hi: #c59a70;
+  --room-wood: #855b45;
+  --room-wood-hi: #b77e58;
+  --room-teal: #587f7d;
+  --room-teal-hi: #7fa5a0;
+  --room-plum: #825b7a;
+  --room-plum-hi: #ac7c9f;
+  --room-green: #4f7658;
+  --room-green-hi: #7fa36c;
+  --room-sky: #496a7a;
+  --room-sky-hi: #7193a0;
+  --room-light: #f1cf68;
+  --room-paper: #f4ead1;
 }
 
 .room-pet {
@@ -2853,71 +2930,81 @@ button {
     height: 232px;
   }
   .habitat__wall {
-    bottom: 74px;
+    bottom: 76px;
   }
   .habitat__floor {
-    height: 74px;
+    height: 76px;
   }
   .habitat__window {
-    left: 15px;
-    width: 92px;
-    height: 67px;
+    left: 12px;
+    width: 88px;
+    height: 64px;
+  }
+  .habitat__lamp {
+    display: none;
   }
   .habitat__shelf {
-    left: 32%;
-    width: 100px;
+    left: 34%;
+    width: 84px;
   }
   .habitat__shelf span {
-    margin-left: 3px;
+    width: 8px;
+    margin-left: 4px;
   }
   .habitat__picture {
     display: none;
   }
   .habitat__clock {
-    right: 22%;
-    width: 36px;
-    height: 36px;
+    right: 20%;
+    width: 32px;
+    height: 32px;
   }
   .habitat__rug {
-    left: 8%;
-    right: 8%;
+    left: 4%;
+    right: 4%;
+    height: 44px;
   }
   .habitat__radio {
-    left: 3%;
+    display: none;
   }
   .habitat__plant {
-    left: 25%;
+    left: 21%;
   }
   .habitat__table {
-    left: 39%;
-    width: 80px;
+    left: 38%;
+    width: 72px;
   }
   .habitat__sofa {
-    left: 57%;
-    width: 96px;
+    left: 56%;
+    width: 88px;
   }
   .habitat__cushion {
-    left: 75%;
-    width: 56px;
+    left: 77%;
+    width: 48px;
   }
   .habitat__door {
-    right: 8px;
-    width: 58px;
+    right: 4px;
+    width: 52px;
   }
   .room-pet--momentum {
-    --pet-x: 10% !important;
+    --pet-x: 9% !important;
+    --pet-y: 14px !important;
   }
   .room-pet--growth {
     --pet-x: 28% !important;
+    --pet-y: 20px !important;
   }
   .room-pet--value {
-    --pet-x: 46% !important;
+    --pet-x: 47% !important;
+    --pet-y: 28px !important;
   }
   .room-pet--macro {
-    --pet-x: 64% !important;
+    --pet-x: 66% !important;
+    --pet-y: 22px !important;
   }
   .room-pet--contrarian {
-    --pet-x: 80% !important;
+    --pet-x: 83% !important;
+    --pet-y: 10px !important;
   }
   .article-composer__foot {
     align-items: stretch;

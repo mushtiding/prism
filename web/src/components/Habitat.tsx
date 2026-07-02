@@ -14,36 +14,36 @@ interface RoomSpot {
 
 const ROOM_SPOTS: Record<PersonaId, RoomSpot> = {
   momentum: {
-    x: "12%",
-    y: 19,
+    x: "13%",
+    y: 18,
     facing: 1,
     activity: "pacing by the ticker",
     activityClass: "pace",
   },
   growth: {
-    x: "29%",
-    y: 31,
+    x: "30%",
+    y: 27,
     facing: -1,
     activity: "tending the plant",
     activityClass: "tend",
   },
   value: {
-    x: "47%",
-    y: 18,
+    x: "48%",
+    y: 34,
     facing: 1,
     activity: "reading at the table",
     activityClass: "read",
   },
   macro: {
-    x: "65%",
-    y: 29,
+    x: "66%",
+    y: 28,
     facing: -1,
     activity: "watching from the sofa",
     activityClass: "watch",
   },
   contrarian: {
-    x: "80%",
-    y: 16,
+    x: "82%",
+    y: 14,
     facing: -1,
     activity: "settling onto the floor cushion",
     activityClass: "settle",
@@ -83,7 +83,11 @@ export function Habitat({
       <div className="habitat__wall" aria-hidden="true">
         <div className="habitat__window">
           <span className="habitat__window-moon" />
+          <span className="habitat__window-star" />
           <span className="habitat__window-sill" />
+        </div>
+        <div className="habitat__lamp">
+          <span />
         </div>
         <div className="habitat__shelf">
           <span />
@@ -92,6 +96,10 @@ export function Habitat({
           <span />
         </div>
         <div className="habitat__picture">
+          <span />
+          <span />
+          <span />
+          <span />
           <span />
         </div>
         <div className="habitat__clock">

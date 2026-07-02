@@ -6,10 +6,14 @@ const GRID = 16;
 
 function colorFor(ch: string, pal: PetPalette): string | null {
   switch (ch as PetLegend) {
+    case "O":
+      return pal.O;
     case "B":
       return pal.B;
     case "b":
       return pal.b;
+    case "H":
+      return pal.H;
     case "A":
       return pal.A;
     case "a":
@@ -29,7 +33,7 @@ function colorFor(ch: string, pal: PetPalette): string | null {
   }
 }
 
-/** Render one 12x12 frame as a grid of pixel cells via box-shadow on a 1px dot. */
+/** Render one 16x16 frame as a grid of pixel cells via box-shadow on a 1px dot. */
 function frameBoxShadow(frame: string[], pal: PetPalette, px: number): string {
   const shadows: string[] = [];
   for (let y = 0; y < GRID; y++) {
@@ -43,9 +47,8 @@ function frameBoxShadow(frame: string[], pal: PetPalette, px: number): string {
 }
 
 /**
- * A Tamagotchi-style pixel persona in its signature color. Alternates between
- * its normal and squeezed frames to produce a little idle bounce. `animate=false`
- * holds the normal frame (used outside the cast, e.g. the drawer header).
+ * A compact pixel persona in its signature color. Alternates between two
+ * character-specific idle frames. `animate=false` holds the primary frame.
  */
 export function PixelPet({
   id,
