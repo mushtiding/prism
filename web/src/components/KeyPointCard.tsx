@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { ChevronDown, ExternalLink } from "lucide-react";
 import type { KeyPoint, PersonaPOV } from "@prism/shared";
 import { PERSONA_IDS } from "@prism/shared";
 import { PERSONA_STYLE, magnitudeDirection } from "../personaStyle";
@@ -65,7 +66,12 @@ export function KeyPointCard({
           <div className="kp__spectrum">
             <Spectrum points={points} size="sm" />
           </div>
-          <span className="kp__chev">▾</span>
+          <ChevronDown
+            className="kp__chev"
+            size={16}
+            strokeWidth={1.8}
+            aria-hidden="true"
+          />
         </div>
       </button>
 
@@ -95,7 +101,10 @@ export function KeyPointCard({
                     key={i}
                   >
                     {s.title}
-                    <span className="source-link__pub">{s.publisher} ↗</span>
+                    <span className="source-link__pub">
+                      {s.publisher}
+                      <ExternalLink size={12} strokeWidth={1.8} aria-hidden="true" />
+                    </span>
                   </a>
                 ))}
               </div>

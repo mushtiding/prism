@@ -80,6 +80,18 @@ export interface PersonaPOV {
   stances: Stance[];
 }
 
+/** A second, independent pass after each persona reads the others' first takes. */
+export interface RoomRead {
+  /** ISO timestamp of when the second pass completed. */
+  generatedAt: string;
+  /** Short deterministic briefing of how the strengthened lenses compare. */
+  briefing: string;
+  /** One strengthened POV for each persona that completed the second pass. */
+  strengthenedPovs: PersonaPOV[];
+  /** Divergence across the strengthened stances. */
+  divergence: Divergence;
+}
+
 /** A persona's durable definition (FR-3, FR-9). Version-controlled, not per-day. */
 export interface PersonaDef {
   id: PersonaId;
@@ -111,17 +123,24 @@ export interface DayContent {
   dayDivergence: Divergence;
   /** ISO timestamp of when this content was generated. */
   generatedAt: string;
+  /** Optional second-pass analysis. Original POVs remain the first impressions. */
+  roomRead?: RoomRead;
   /** Persistent "lenses, not advice" framing (FR-10). */
   disclaimer: string;
 }
 
-/** A daily briefing already generated and available for read-only history. */
-export interface HistoryDaySummary {
-  date: string;
+/** One generated briefing version available within a historical day. */
+export interface HistoryBriefSummary {
   generatedAt: string;
   keyPointCount: number;
   personaCount: number;
   leadSummary: string;
+}
+
+/** All generated briefing versions available for one historical day. */
+export interface HistoryDaySummary {
+  date: string;
+  briefings: HistoryBriefSummary[];
 }
 
 export interface MyLensArticleInput {

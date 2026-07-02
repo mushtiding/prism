@@ -1,0 +1,4 @@
+interface:
+  display_name: "Apply Gestalt Layout Rules"
+  short_description: "Build clearer layouts with Gestalt principles"
+  default_prompt: "Use $apply-gestalt-layout-rules to review this design and improve its grouping, hierarchy, balance, and visual flow."

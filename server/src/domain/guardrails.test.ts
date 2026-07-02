@@ -53,6 +53,12 @@ describe("checkReadability", () => {
   it("fails an empty POV", () => {
     expect(checkReadability("   ").ok).toBe(false);
   });
+
+  it("fails placeholder text", () => {
+    const result = checkReadability("...");
+    expect(result.ok).toBe(false);
+    expect(result.violations[0]).toContain("too short");
+  });
 });
 
 describe("checkNoAdvice", () => {

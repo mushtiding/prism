@@ -1,6 +1,6 @@
 # Prism Takeover Summary
 
-Updated 2026-06-27 after the History and Your Moves UI revisions.
+Updated 2026-06-30 after the Room Read addition.
 
 ## Product
 
@@ -23,12 +23,15 @@ commands are `npm run dev`, `npm test`, `npm run typecheck`, and
 ## Runtime
 
 - Local secrets belong only in ignored `server/.env`.
-- The active model is `openrouter/owl-alpha` through OpenRouter.
+- The active model is `nvidia/nemotron-3-super-120b-a12b:free`. Explicit
+  fallback is `openrouter/free`, which dynamically selects a currently
+  available free model compatible with structured output. Owl Alpha was removed from
+  OpenRouter's live model catalog on 2026-06-30 and now returns HTTP 404.
 - The OpenRouter timeout is 480 seconds; raw responses are written to
   `server/logs/openrouter-raw-responses.log` with secrets redacted.
 - Alpha Vantage is the primary market provider. Yahoo Finance provides the
   keyless quota fallback and RSS article pool.
-- The dev API is `http://localhost:8787`; Vite chooses an available port.
+- The dev API is `http://localhost:8788`; Vite chooses an available web port.
 
 ## Daily Pipeline
 
@@ -41,9 +44,27 @@ commands are `npm run dev`, `npm test`, `npm run typecheck`, and
    missing personas appear unavailable and can be retried in the app.
 4. Divergence is computed deterministically from persona stance scores.
 5. Daily content is cached under `server/cache/<requested-date>.json`.
+   That top-level file is the latest pointer used by Today. Every successful
+   generation is also stored under `server/cache/versions/<date>/`; History
+   exposes all versions for a prior date in newest-first order. A failed refresh
+   leaves both the latest pointer and version history untouched.
 6. Missing daily personas are disabled in the UI and can be retried in place.
    A retry has a 60-second UI/server deadline and merges a valid POV back into
    the cached day without regenerating articles.
+7. A live daily briefing with at least two first impressions can reveal one
+   **Room Read**. Each available persona privately receives the other first
+   impressions and writes an independent strengthened second pass. The prompt
+   explicitly forbids dialogue, collective consensus, and invented support.
+   A deterministic room briefing compares the first and strengthened stance
+   divergence. The original POVs remain unchanged, while the optional Room
+   Read is saved onto that exact briefing version and remains visible in History.
+   Completion requires at least three strengthened lenses; thinner partial
+   results are rejected so Reveal remains retryable. OpenRouter reasoning is
+   explicitly disabled when `OPENROUTER_REASONING=none`, which prevents
+   Nemotron 3 Super from spending the JSON output budget on visible analysis.
+   Strengthened text identical to the first impression is also rejected. Once
+   the room reaches quorum, any missing strengthened persona remains visibly
+   unavailable and can be retried individually without regenerating its peers.
 
 ## Your Moves
 
@@ -94,18 +115,29 @@ queue but invalidates legacy pre-synthesis results once.
   the 0-to-1 index and interprets the current value.
 - Missing persona cards never masquerade as neutral. Daily cards expose Retry;
   Your Moves partial results currently show unavailable lenses without retry.
+- Today places Reveal Room Read directly below the cast cards. While the second
+  pass runs it shows elapsed time; afterward it renders a compact briefing and
+  one strengthened card per completed persona. The persona drawer provides
+  First impression / Strengthened tabs for direct comparison.
 - Your Moves queued articles and generated results survive app-tab navigation
   and full page reloads until explicitly removed.
+- The sliders button in the masthead opens Settings. Its sun/moon control
+  switches between dark and light themes and persists the choice in local
+  storage before the next page paint.
 
 ## API
 
 - `GET /api/health`
 - `GET /api/personas`
 - `GET /api/day/latest`
+- `POST /api/day/latest/refresh`
+- `POST /api/day/latest/room-read`
+- `POST /api/day/latest/room-read/personas/:personaId/retry`
 - `POST /api/day/latest/personas/:personaId/retry`
 - `GET /api/day/:date`
 - `GET /api/history`
 - `GET /api/history/:date`
+  accepts an optional `generatedAt` query to retrieve one exact saved brief.
 - `POST /api/my-lens/analyze`
 - `GET /api/my-lens/jobs/:jobId`
 
@@ -122,6 +154,13 @@ At this handoff:
 - `npm audit --omit=dev`: no production vulnerabilities.
 - Browser checks covered the generated History catalog/detail flow, compact
   article queue, reload persistence, deletion affordance, and 390px layouts.
+- Daily refresh version retention has a focused store test. The icon-only
+  refresh control, History time selector, exact-version detail, and both themes
+  were browser-checked at desktop and 390px widths.
+- Room Read has focused generation and same-version persistence coverage. Its
+  reveal state and mobile control were browser-checked at 390px; the current
+  live June 30 cache had no completed first impressions, so the UI correctly
+  kept Reveal disabled and the endpoint returned HTTP 409 without model calls.
 - The reported Yahoo article was also verified live: Owl Alpha produced a
   rewritten neutral headline, a concise factual summary, and four key facts.
   Re-running it with an invalid second URL kept the displayed divergence and

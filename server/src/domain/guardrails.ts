@@ -70,6 +70,8 @@ export function checkReadability(text: string): GuardrailResult {
   }
   if (words === 0) {
     violations.push("POV is empty");
+  } else if (words < 8 || !/[a-z]{3}/i.test(text)) {
+    violations.push("POV is too short to be useful");
   }
   return { ok: violations.length === 0, violations };
 }

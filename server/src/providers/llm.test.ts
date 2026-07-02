@@ -41,6 +41,40 @@ describe("OpenRouterClient", () => {
     }
   });
 
+  it("explicitly disables model reasoning when reasoning is configured off", async () => {
+    const originalModels = config.openRouterModels;
+    const originalReasoning = config.openRouterReasoning;
+    config.openRouterModels = ["test-model"];
+    config.openRouterReasoning = "none";
+    let request: Record<string, unknown> | undefined;
+    try {
+      const client = clientWithCompletion({
+        choices: [{ message: { content: "{\"ok\":true}" } }],
+      });
+      (
+        client as unknown as {
+          client: {
+            chat: {
+              completions: {
+                create: (params: Record<string, unknown>) => Promise<unknown>;
+              };
+            };
+          };
+        }
+      ).client.chat.completions.create = async (params) => {
+        request = params;
+        return { choices: [{ message: { content: "{\"ok\":true}" } }] };
+      };
+
+      await client.generate([], { label: "test" });
+
+      expect(request?.reasoning).toEqual({ enabled: false, exclude: true });
+    } finally {
+      config.openRouterModels = originalModels;
+      config.openRouterReasoning = originalReasoning;
+    }
+  });
+
   it("throws a diagnostic error when OpenRouter returns no choices", async () => {
     const originalModels = config.openRouterModels;
     config.openRouterModels = ["test-model"];

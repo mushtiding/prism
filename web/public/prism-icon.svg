@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-labelledby="title desc">
+  <title id="title">Prism</title>
+  <desc id="desc">One white beam enters a prism and separates into five grayscale viewpoints.</desc>
+  <rect width="64" height="64" rx="10" fill="#0f0f12"/>
+  <rect x="1" y="1" width="62" height="62" rx="9" fill="none" stroke="#2b2b31" stroke-width="2"/>
+
+  <path d="M7 32h18" fill="none" stroke="#f4f4f5" stroke-width="5" stroke-linecap="square"/>
+
+  <g fill="none" stroke-width="4" stroke-linecap="square">
+    <path d="M39 27 57 17" stroke="#f4f4f5"/>
+    <path d="M41 29.8 57 25" stroke="#d1d1d6"/>
+    <path d="M42.5 32.5 57 32" stroke="#aaaab1"/>
+    <path d="M43.8 35.2 57 39" stroke="#84848c"/>
+    <path d="M45 38 57 47" stroke="#5d5d65"/>
+  </g>
+
+  <path d="M32 12.5 49 49H15Z" fill="#0f0f12" stroke="#f4f4f5" stroke-width="3.5" stroke-linejoin="round"/>
+</svg>

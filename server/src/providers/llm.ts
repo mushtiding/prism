@@ -49,8 +49,21 @@ export class LlmRateLimitError extends Error {
   }
 }
 
+export class LlmModelUnavailableError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "LlmModelUnavailableError";
+  }
+}
+
 function isRateLimitMessage(message: string): boolean {
   return /(?:\b429\b|rate limit|free-models-per-)/i.test(message);
+}
+
+function isModelUnavailableMessage(message: string): boolean {
+  return /(?:\b404\b|no endpoints? found|model (?:not found|unavailable)|unknown model)/i.test(
+    message,
+  );
 }
 
 interface ChatCompletionLike {
@@ -63,7 +76,7 @@ function reasoningConfig(): Record<string, unknown> {
   if (effort && effort !== "none" && effort !== "off") {
     return { effort: config.openRouterReasoning, exclude: true };
   }
-  return { exclude: true };
+  return { enabled: false, exclude: true };
 }
 
 async function appendRawResponseLog(entry: {
@@ -211,6 +224,9 @@ export class OpenRouterClient implements LlmClient {
       const message = `All OpenRouter models failed for ${label}: ${failures.join(" | ")}`;
       if (failures.length > 0 && failures.every(isRateLimitMessage)) {
         throw new LlmRateLimitError(message);
+      }
+      if (failures.length > 0 && failures.every(isModelUnavailableMessage)) {
+        throw new LlmModelUnavailableError(message);
       }
       throw new Error(message);
     } catch (err) {

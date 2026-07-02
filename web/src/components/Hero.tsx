@@ -61,13 +61,13 @@ export function Hero({ day }: { day: DayContent }) {
   }
 
   return (
-    <section className="hero rise">
-      <div className="hero__date mono">
+    <section className="hero">
+      <div className="hero__date hero__enter hero__enter--date mono">
         {day.kind === "timeMachine" || day.kind === "myLens"
           ? day.title
           : prettyDate(day.date)}
       </div>
-      <div className="hero__head">
+      <div className="hero__head hero__enter hero__enter--head">
         <div className="hero__score">
           <span className={`hero__score-num lvl-${div.level}`}>
             {hasDivergenceSignal ? div.score.toFixed(2) : "--"}
@@ -76,38 +76,39 @@ export function Hero({ day }: { day: DayContent }) {
             <span className={`hero__level-word lvl-${div.level}`}>
               {hasDivergenceSignal ? LEVEL_WORD[div.level] : "Awaiting lenses"}
             </span>
-            <span className="hero__index-help-wrap">
-              <button
-                type="button"
-                className="hero__index-help"
-                aria-describedby="divergence-index-help"
-                aria-expanded={showIndexHelp}
-                onBlur={() => setShowIndexHelp(false)}
-                onClick={() => setShowIndexHelp((current) => !current)}
-              >
-                divergence index · 0–1
-                <span className="hero__index-icon" aria-hidden="true">i</span>
-              </button>
-              <span
-                id="divergence-index-help"
-                className={`hero__index-tooltip${showIndexHelp ? " hero__index-tooltip--open" : ""}`}
-                role="tooltip"
-              >
-                <strong>How to read it</strong>
-                <span>
-                  Shows how much the loaded lenses disagree. Zero means aligned;
-                  one means maximally split. It is not a market forecast.
-                </span>
-                <span>
-                  <b>{day.kind === "myLens" ? "This read:" : "Today:"}</b>{" "}
-                  {hasDivergenceSignal
-                    ? divergenceMeaning(div.score, div.level, lensSubject)
-                    : "A divergence value appears after at least two lenses load."}{" "}
-                  {loadedLensNote}
-                </span>
+          </div>
+          <span className="hero__index-help-wrap">
+            <span className="hero__index-help">divergence index · 0–1</span>
+            <button
+              type="button"
+              className="hero__index-trigger"
+              aria-label="Explain the divergence index"
+              aria-describedby="divergence-index-help"
+              aria-expanded={showIndexHelp}
+              onBlur={() => setShowIndexHelp(false)}
+              onClick={() => setShowIndexHelp((current) => !current)}
+            >
+              <span className="hero__index-icon" aria-hidden="true">i</span>
+            </button>
+            <span
+              id="divergence-index-help"
+              className={`hero__index-tooltip${showIndexHelp ? " hero__index-tooltip--open" : ""}`}
+              role="tooltip"
+            >
+              <strong>How to read it</strong>
+              <span>
+                Shows how much the loaded lenses disagree. Zero means aligned;
+                one means maximally split. It is not a market forecast.
+              </span>
+              <span>
+                <b>{day.kind === "myLens" ? "This read:" : "Today:"}</b>{" "}
+                {hasDivergenceSignal
+                  ? divergenceMeaning(div.score, div.level, lensSubject)
+                  : "A divergence value appears after at least two lenses load."}{" "}
+                {loadedLensNote}
               </span>
             </span>
-          </div>
+          </span>
         </div>
         <p className="hero__read">
           {hasDivergenceSignal
@@ -115,7 +116,7 @@ export function Hero({ day }: { day: DayContent }) {
             : "Today's market brief is live. Persona lenses are currently unavailable."}
         </p>
       </div>
-      <div className="spectrum--hero">
+      <div className="spectrum--hero hero__enter hero__enter--spectrum">
         <Spectrum points={points} size="lg" />
       </div>
     </section>

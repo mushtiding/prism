@@ -40,7 +40,8 @@ briefing; failures that prevent the briefing itself use the bundled sample day.
 
 - **Market data:** Alpha Vantage (US equities).
 - **LLM:** OpenRouter via the OpenAI SDK, defaulting to
-  `openrouter/owl-alpha`. Model-agnostic by design.
+  `nvidia/nemotron-3-super-120b-a12b:free`, with `openrouter/free` as the
+  recommended fallback. Model-agnostic by design.
 - **Divergence:** computed deterministically from each persona's structured
   −2..+2 conviction stances — no LLM judge.
 - **Guardrails:** neutral-tone enforcement on the briefing, ≤200-word + plain
@@ -53,7 +54,7 @@ briefing; failures that prevent the briefing itself use the bundled sample day.
 npm install
 
 # Sample mode (no keys needed) — opens straight to the bundled sample day:
-npm run dev          # server on :8787, web on :5173 → open http://localhost:5173
+npm run dev          # server on :8788, web on :5173 → open http://localhost:5173
 
 # Live mode — copy .env.example to server/.env and set:
 #   OPENROUTER_API_KEY=...      ALPHAVANTAGE_API_KEY=...

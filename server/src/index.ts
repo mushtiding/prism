@@ -38,15 +38,20 @@ app.use(
 );
 
 async function main() {
-  await runStartupChecks();
-  startStatusReporter();
-  logBootSummary(config.port);
-
-  app.listen(config.port, config.host, () => {
+  const server = app.listen(config.port, config.host, () => {
     console.log(
       `[prism] listening on ${config.host}:${config.port} (${isLiveMode() ? "LIVE" : "SAMPLE"})`,
     );
   });
+
+  try {
+    await runStartupChecks();
+    startStatusReporter();
+    logBootSummary(config.port);
+  } catch (err) {
+    server.close();
+    throw err;
+  }
 }
 
 main().catch((err) => {

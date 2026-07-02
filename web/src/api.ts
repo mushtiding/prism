@@ -19,9 +19,21 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
 }
 
 export const api = {
-  health: () => request<HealthStatus>("/api/health"),
-  latestDay: () => request<DayContent>("/api/day/latest"),
-  personas: () => request<PersonaDef[]>("/api/personas"),
+  health: (signal?: AbortSignal) =>
+    request<HealthStatus>("/api/health", { signal }),
+  latestDay: (signal?: AbortSignal) =>
+    request<DayContent>("/api/day/latest", { signal }),
+  refreshLatestDay: () =>
+    request<DayContent>("/api/day/latest/refresh", { method: "POST" }),
+  revealLatestRoomRead: () =>
+    request<DayContent>("/api/day/latest/room-read", { method: "POST" }),
+  retryLatestRoomReadPersona: (id: PersonaId, signal: AbortSignal) =>
+    request<DayContent>(`/api/day/latest/room-read/personas/${id}/retry`, {
+      method: "POST",
+      signal,
+    }),
+  personas: (signal?: AbortSignal) =>
+    request<PersonaDef[]>("/api/personas", { signal }),
   retryLatestPersona: (id: PersonaId, signal: AbortSignal) =>
     request<DayContent>(`/api/day/latest/personas/${id}/retry`, {
       method: "POST",
@@ -35,6 +47,10 @@ export const api = {
     }),
   myLensJob: (jobId: string) =>
     request<MyLensJobStatus>(`/api/my-lens/jobs/${jobId}`),
-  history: () => request<HistoryDaySummary[]>("/api/history"),
-  historyDay: (date: string) => request<DayContent>(`/api/history/${date}`),
+  history: (signal?: AbortSignal) =>
+    request<HistoryDaySummary[]>("/api/history", { signal }),
+  historyDay: (date: string, generatedAt?: string) =>
+    request<DayContent>(
+      `/api/history/${date}${generatedAt ? `?generatedAt=${encodeURIComponent(generatedAt)}` : ""}`,
+    ),
 };

@@ -1,5 +1,13 @@
 import { useEffect, useRef, useState } from "react";
-import { ArrowRight, ChevronLeft, ChevronRight } from "lucide-react";
+import {
+  ArrowRight,
+  ChevronLeft,
+  ChevronRight,
+  Moon,
+  RefreshCw,
+  SlidersHorizontal,
+  Sun,
+} from "lucide-react";
 import type {
   DayContent,
   HealthStatus,
@@ -27,24 +35,87 @@ export default function App() {
   const [historyLoading, setHistoryLoading] = useState(false);
   const [myLensDay, setMyLensDay] = useState<DayContent | null>(null);
   const [active, setActive] = useState<PersonaId | null>(null);
+  const [activeRead, setActiveRead] = useState<"first" | "strengthened">("first");
   const [error, setError] = useState<string | null>(null);
+  const [refreshingToday, setRefreshingToday] = useState(false);
+  const [refreshStartedAt, setRefreshStartedAt] = useState<number | null>(null);
+  const [refreshElapsed, setRefreshElapsed] = useState(0);
+  const [refreshError, setRefreshError] = useState<string | null>(null);
+  const [revealingRoomRead, setRevealingRoomRead] = useState(false);
+  const [roomReadStartedAt, setRoomReadStartedAt] = useState<number | null>(null);
+  const [roomReadElapsed, setRoomReadElapsed] = useState(0);
+  const [roomReadError, setRoomReadError] = useState<string | null>(null);
 
   // Initial load: personas, today's content, health, and generated history.
   useEffect(() => {
-    Promise.all([
-      api.personas(),
-      api.latestDay(),
-      api.health(),
-      api.history(),
-    ])
-      .then(([p, d, h, generatedHistory]) => {
+    const controller = new AbortController();
+
+    async function loadInitialData() {
+      try {
+        // Vite can be ready a fraction before the API process during `npm run
+        // dev`. Probe one cheap endpoint first so that race cannot strand the
+        // whole app on its error screen.
+        let h: HealthStatus | null = null;
+        let lastError: unknown;
+        for (let attempt = 0; attempt < 10; attempt += 1) {
+          try {
+            h = await api.health(controller.signal);
+            break;
+          } catch (nextError) {
+            if (controller.signal.aborted) return;
+            lastError = nextError;
+            await new Promise((resolve) =>
+              window.setTimeout(resolve, Math.min(250 + attempt * 150, 1_000)),
+            );
+          }
+        }
+        if (!h) throw lastError ?? new Error("Prism API did not start");
+
+        const [p, d, generatedHistory] = await Promise.all([
+          api.personas(controller.signal),
+          api.latestDay(controller.signal),
+          api.history(controller.signal),
+        ]);
+        if (controller.signal.aborted) return;
         setDefs(p);
         setToday(d);
         setHealth(h);
         setHistory(generatedHistory);
-      })
-      .catch((e) => setError(String(e)));
+        setError(null);
+      } catch (nextError) {
+        if (!controller.signal.aborted) setError(String(nextError));
+      }
+    }
+
+    void loadInitialData();
+    return () => controller.abort();
   }, []);
+
+  useEffect(() => {
+    if (refreshStartedAt === null) {
+      setRefreshElapsed(0);
+      return;
+    }
+    const updateElapsed = () => {
+      setRefreshElapsed(Math.floor((Date.now() - refreshStartedAt) / 1000));
+    };
+    updateElapsed();
+    const timer = window.setInterval(updateElapsed, 1_000);
+    return () => window.clearInterval(timer);
+  }, [refreshStartedAt]);
+
+  useEffect(() => {
+    if (roomReadStartedAt === null) {
+      setRoomReadElapsed(0);
+      return;
+    }
+    const updateElapsed = () => {
+      setRoomReadElapsed(Math.floor((Date.now() - roomReadStartedAt) / 1000));
+    };
+    updateElapsed();
+    const timer = window.setInterval(updateElapsed, 1_000);
+    return () => window.clearInterval(timer);
+  }, [roomReadStartedAt]);
 
   const current =
     view === "history" && historyDay
@@ -57,29 +128,79 @@ export default function App() {
     active && current
       ? current.povs.find((p) => p.personaId === active) ?? null
       : null;
+  const activeStrengthenedPov =
+    active && current?.roomRead
+      ? current.roomRead.strengthenedPovs.find((p) => p.personaId === active) ?? null
+      : null;
+
+  function pickPersona(
+    id: PersonaId,
+    read: "first" | "strengthened" = "first",
+  ) {
+    setActiveRead(read);
+    setActive(id);
+  }
 
   // Switch the day context (view or historical briefing) and always close any
   // open persona drawer — otherwise it would silently swap to the other day's
   // POV for the same persona, misattributing one day's read to another.
   function switchView(v: View) {
     setActive(null);
+    setActiveRead("first");
     setView(v);
   }
   function backToHistory() {
     setActive(null);
+    setActiveRead("first");
     setHistoryDay(null);
+  }
+
+  async function refreshToday() {
+    if (refreshingToday) return;
+    setActive(null);
+    setRefreshError(null);
+    setRefreshingToday(true);
+    setRefreshStartedAt(Date.now());
+    try {
+      setToday(await api.refreshLatestDay());
+    } catch (err) {
+      setRefreshError(
+        err instanceof Error ? err.message : "Could not refresh the briefing.",
+      );
+    } finally {
+      setRefreshingToday(false);
+      setRefreshStartedAt(null);
+    }
+  }
+
+  async function revealRoomRead() {
+    if (revealingRoomRead || !today || today.roomRead) return;
+    setActive(null);
+    setRoomReadError(null);
+    setRevealingRoomRead(true);
+    setRoomReadStartedAt(Date.now());
+    try {
+      setToday(await api.revealLatestRoomRead());
+    } catch (err) {
+      setRoomReadError(
+        err instanceof Error ? err.message : "Could not reveal the room read.",
+      );
+    } finally {
+      setRevealingRoomRead(false);
+      setRoomReadStartedAt(null);
+    }
   }
 
   // Sequence history fetches so a slow earlier response can't overwrite a
   // later selection (out-of-order responses would otherwise show a stale day).
   const historyReq = useRef(0);
-  function openHistoryDay(date: string) {
+  function openHistoryDay(date: string, generatedAt: string) {
     const token = ++historyReq.current;
     setActive(null);
     setHistoryDay(null);
     setHistoryLoading(true);
     api
-      .historyDay(date)
+      .historyDay(date, generatedAt)
       .then((d) => {
         if (historyReq.current === token) setHistoryDay(d);
       })
@@ -117,7 +238,21 @@ export default function App() {
           <DayBody
             day={today}
             defs={defs}
-            onPick={setActive}
+            onPick={pickPersona}
+            onRefresh={() => void refreshToday()}
+            refreshing={refreshingToday}
+            refreshElapsed={refreshElapsed}
+            refreshError={refreshError}
+            onRevealRoomRead={
+              today.source === "live" ? () => void revealRoomRead() : undefined
+            }
+            onRetryRoomRead={async (id, signal) => {
+              const updated = await api.retryLatestRoomReadPersona(id, signal);
+              setToday(updated);
+            }}
+            revealingRoomRead={revealingRoomRead}
+            roomReadElapsed={roomReadElapsed}
+            roomReadError={roomReadError}
             onRetry={async (id, signal) => {
               const updated = await api.retryLatestPersona(id, signal);
               setToday(updated);
@@ -134,7 +269,7 @@ export default function App() {
           defs={defs}
           onOpen={openHistoryDay}
           onBack={backToHistory}
-          onPick={setActive}
+          onPick={pickPersona}
         />
       )}
 
@@ -142,7 +277,7 @@ export default function App() {
         <MyLensView
           defs={defs}
           onResult={setMyLensDay}
-          onPick={setActive}
+          onPick={pickPersona}
         />
       </div>
 
@@ -150,8 +285,11 @@ export default function App() {
 
       {activeDef && activePov && (
         <PersonaDrawer
+          key={`${active}-${activeRead}`}
           def={activeDef}
           pov={activePov}
+          strengthenedPov={activeStrengthenedPov}
+          initialRead={activeRead}
           context={
             current?.kind === "myLens"
               ? "your articles"
@@ -170,24 +308,91 @@ function DayBody({
   day,
   defs,
   onPick,
+  onRefresh,
+  refreshing = false,
+  refreshElapsed = 0,
+  refreshError = null,
   onRetry,
+  onRevealRoomRead,
+  onRetryRoomRead,
+  revealingRoomRead = false,
+  roomReadElapsed = 0,
+  roomReadError = null,
 }: {
   day: DayContent;
   defs: PersonaDef[];
-  onPick: (id: PersonaId) => void;
+  onPick: (id: PersonaId, read?: "first" | "strengthened") => void;
+  onRefresh?: () => void;
+  refreshing?: boolean;
+  refreshElapsed?: number;
+  refreshError?: string | null;
   onRetry?: (id: PersonaId, signal: AbortSignal) => Promise<void>;
+  onRevealRoomRead?: () => void;
+  onRetryRoomRead?: (id: PersonaId, signal: AbortSignal) => Promise<void>;
+  revealingRoomRead?: boolean;
+  roomReadElapsed?: number;
+  roomReadError?: string | null;
 }) {
   return (
     <>
       <section className="keypoints">
         <div className="section-label">
-          What moved · {day.keyPoints.length} key points
+          <span>What moved · {day.keyPoints.length} key points</span>
+          <span className="section-label__tools">
+            <time
+              className="section-label__timestamp"
+              dateTime={day.generatedAt}
+              title={`Briefing generated ${new Date(day.generatedAt).toLocaleString()}`}
+            >
+              Generated {formatBriefingTime(day.generatedAt)}
+            </time>
+            {onRefresh && (
+              <button
+                className="briefing-refresh"
+                type="button"
+                onClick={onRefresh}
+                disabled={refreshing}
+                aria-label={
+                  refreshing
+                    ? `Refreshing briefing, ${refreshElapsed} seconds elapsed`
+                    : "Refresh briefing with current market news"
+                }
+                title={
+                  refreshing
+                    ? `Refreshing · ${refreshElapsed}s elapsed`
+                    : "Refresh briefing"
+                }
+              >
+                <RefreshCw
+                  className={refreshing ? "briefing-refresh__icon--spinning" : ""}
+                  size={14}
+                  strokeWidth={2}
+                  aria-hidden="true"
+                />
+              </button>
+            )}
+          </span>
         </div>
+        {refreshError && (
+          <p className="keypoints__refresh-error" role="alert">
+            Refresh failed. The previous briefing was kept. {refreshError}
+          </p>
+        )}
         {day.keyPoints.map((kp) => (
           <KeyPointCard key={kp.id} keyPoint={kp} povs={day.povs} />
         ))}
       </section>
-      <CastStrip day={day} defs={defs} onPick={onPick} onRetry={onRetry} />
+      <CastStrip
+        day={day}
+        defs={defs}
+        onPick={onPick}
+        onRetry={onRetry}
+        onRevealRoomRead={onRevealRoomRead}
+        onRetryRoomRead={onRetryRoomRead}
+        revealingRoomRead={revealingRoomRead}
+        roomReadElapsed={roomReadElapsed}
+        roomReadError={roomReadError}
+      />
     </>
   );
 }
@@ -205,11 +410,14 @@ function HistoryView({
   day: DayContent | null;
   loading: boolean;
   defs: PersonaDef[];
-  onOpen: (id: string) => void;
+  onOpen: (date: string, generatedAt: string) => void;
   onBack: () => void;
-  onPick: (id: PersonaId) => void;
+  onPick: (id: PersonaId, read?: "first" | "strengthened") => void;
 }) {
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
+  const [selectedGeneratedAt, setSelectedGeneratedAt] = useState<string | null>(
+    null,
+  );
   const [visibleMonth, setVisibleMonth] = useState("");
 
   useEffect(() => {
@@ -220,12 +428,26 @@ function HistoryView({
     }
   }, [history, selectedDate]);
 
+  useEffect(() => {
+    const entry = history.find((candidate) => candidate.date === selectedDate);
+    if (!entry) return;
+    if (
+      !selectedGeneratedAt ||
+      !entry.briefings.some(
+        (briefing) => briefing.generatedAt === selectedGeneratedAt,
+      )
+    ) {
+      setSelectedGeneratedAt(entry.briefings[0]?.generatedAt ?? null);
+    }
+  }, [history, selectedDate, selectedGeneratedAt]);
+
   if (day) {
     return (
       <>
         <div className="tm-banner">
           <span className="tm-banner__txt">
-            Viewing the generated briefing for <b>{formatHistoryDate(day.date)}</b>.
+            Viewing the <b>{formatBriefingTime(day.generatedAt)}</b> briefing for{" "}
+            <b>{formatHistoryDate(day.date)}</b>.
           </span>
           <button className="nav-btn" onClick={onBack}>
             ← History
@@ -247,6 +469,10 @@ function HistoryView({
 
   const selectedEntry =
     history.find((entry) => entry.date === selectedDate) ?? history[0] ?? null;
+  const selectedBriefing =
+    selectedEntry?.briefings.find(
+      (briefing) => briefing.generatedAt === selectedGeneratedAt,
+    ) ?? selectedEntry?.briefings[0] ?? null;
   const month = visibleMonth || selectedEntry?.date.slice(0, 7) || "";
   const availableByDate = new Map(history.map((entry) => [entry.date, entry]));
   const historyMonths = [...new Set(history.map((entry) => entry.date.slice(0, 7)))]
@@ -258,15 +484,18 @@ function HistoryView({
     if (!nextMonth) return;
     const nextEntry = history.find((entry) => entry.date.startsWith(nextMonth));
     setVisibleMonth(nextMonth);
-    if (nextEntry) setSelectedDate(nextEntry.date);
+    if (nextEntry) {
+      setSelectedDate(nextEntry.date);
+      setSelectedGeneratedAt(nextEntry.briefings[0]?.generatedAt ?? null);
+    }
   }
 
   return (
     <section className="tm">
       <div className="section-label">History</div>
       <p className="tm__intro">
-        Prior daily briefings appear here only when they were generated on that
-        date. Opening one reads the saved analysis and never starts a new run.
+        Every generated briefing is saved under its calendar date. Choose a day,
+        then select the generation time you want to revisit.
       </p>
       {history.length === 0 ? (
         <div className="history-empty">No prior generated briefings yet.</div>
@@ -308,7 +537,9 @@ function HistoryView({
                 if (!cell.date) {
                   return <span className="history-calendar__blank" key={`blank-${index}`} />;
                 }
-                const available = availableByDate.has(cell.date);
+                const dayEntry = availableByDate.get(cell.date);
+                const available = Boolean(dayEntry);
+                const briefingCount = dayEntry?.briefings.length ?? 0;
                 const selected = selectedEntry?.date === cell.date;
                 return (
                   <button
@@ -317,38 +548,74 @@ function HistoryView({
                     type="button"
                     disabled={!available}
                     aria-pressed={selected}
-                    aria-label={`${formatHistoryDate(cell.date)}${available ? ", generated briefing" : ", no briefing"}`}
-                    onClick={() => setSelectedDate(cell.date)}
+                    aria-label={`${formatHistoryDate(cell.date)}${available ? `, ${briefingCount} generated briefing${briefingCount === 1 ? "" : "s"}` : ", no briefing"}`}
+                    onClick={() => {
+                      setSelectedDate(cell.date);
+                      setSelectedGeneratedAt(
+                        dayEntry?.briefings[0]?.generatedAt ?? null,
+                      );
+                    }}
                   >
                     {cell.day}
+                    {briefingCount > 1 && (
+                      <span className="history-calendar__count" aria-hidden="true">
+                        {briefingCount}
+                      </span>
+                    )}
                   </button>
                 );
               })}
             </div>
           </div>
 
-          {selectedEntry && (
+          {selectedEntry && selectedBriefing && (
             <section className="history-overview" aria-live="polite">
               <div className="history-overview__date mono">
-                {formatHistoryDate(selectedEntry.date)}
+                {formatHistoryDate(selectedEntry.date)} ·{" "}
+                {selectedEntry.briefings.length} brief
+                {selectedEntry.briefings.length === 1 ? "" : "s"}
               </div>
-              <h2>{selectedEntry.leadSummary}</h2>
+              <div
+                className="history-overview__versions"
+                role="group"
+                aria-label={`Briefings generated on ${formatHistoryDate(selectedEntry.date)}`}
+              >
+                {selectedEntry.briefings.map((briefing) => (
+                  <button
+                    className="history-overview__version"
+                    type="button"
+                    key={briefing.generatedAt}
+                    aria-pressed={
+                      briefing.generatedAt === selectedBriefing.generatedAt
+                    }
+                    title={`Generated ${formatHistoryTimestamp(briefing.generatedAt)}`}
+                    onClick={() =>
+                      setSelectedGeneratedAt(briefing.generatedAt)
+                    }
+                  >
+                    {formatHistoryBriefTime(briefing.generatedAt)}
+                  </button>
+                ))}
+              </div>
+              <h2>{selectedBriefing.leadSummary}</h2>
               <div className="history-overview__metrics">
                 <span>
-                  <b>{selectedEntry.keyPointCount}</b> market move
-                  {selectedEntry.keyPointCount === 1 ? "" : "s"}
+                  <b>{selectedBriefing.keyPointCount}</b> market move
+                  {selectedBriefing.keyPointCount === 1 ? "" : "s"}
                 </span>
                 <span>
-                  <b>{selectedEntry.personaCount}/5</b> lenses available
+                  <b>{selectedBriefing.personaCount}/5</b> lenses available
                 </span>
               </div>
               <p className="history-overview__generated mono">
-                Generated {formatHistoryTimestamp(selectedEntry.generatedAt)}
+                Generated {formatHistoryTimestamp(selectedBriefing.generatedAt)}
               </p>
               <button
                 className="history-overview__open"
                 type="button"
-                onClick={() => onOpen(selectedEntry.date)}
+                onClick={() =>
+                  onOpen(selectedEntry.date, selectedBriefing.generatedAt)
+                }
               >
                 Open full analysis
                 <ArrowRight size={16} aria-hidden="true" />
@@ -404,6 +671,21 @@ function formatHistoryTimestamp(timestamp: string): string {
   }).format(new Date(timestamp));
 }
 
+function formatHistoryBriefTime(timestamp: string): string {
+  return new Intl.DateTimeFormat("en-US", {
+    hour: "numeric",
+    minute: "2-digit",
+  }).format(new Date(timestamp));
+}
+
+function formatBriefingTime(timestamp: string): string {
+  return new Intl.DateTimeFormat("en-US", {
+    hour: "numeric",
+    minute: "2-digit",
+    timeZoneName: "short",
+  }).format(new Date(timestamp));
+}
+
 function Shell({
   children,
   health,
@@ -426,11 +708,17 @@ function Shell({
       <header className="masthead">
         <div className="masthead__inner">
           <div className="wordmark">
-            <div className="wordmark__row">
+            <img
+              className="wordmark__icon"
+              src="/prism-icon.svg"
+              alt=""
+              width="38"
+              height="38"
+            />
+            <div className="wordmark__copy">
               <h1>Prism</h1>
               <span className="wordmark__tag">the disagreement is the signal</span>
             </div>
-            <div className="refraction" />
           </div>
           <div className="masthead__right">
             <button
@@ -473,10 +761,93 @@ function Shell({
                     : "Sample data"}
               </span>
             )}
+            <SettingsMenu />
           </div>
         </div>
       </header>
       <main className="shell">{children}</main>
     </>
+  );
+}
+
+type Theme = "dark" | "light";
+
+function SettingsMenu() {
+  const [open, setOpen] = useState(false);
+  const [theme, setTheme] = useState<Theme>(() =>
+    document.documentElement.dataset.theme === "light" ? "light" : "dark",
+  );
+  const root = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    document.documentElement.dataset.theme = theme;
+    try {
+      window.localStorage.setItem("prism.theme", theme);
+    } catch {
+      // Theme still applies for this session when browser storage is unavailable.
+    }
+  }, [theme]);
+
+  useEffect(() => {
+    if (!open) return;
+    const closeOnOutsidePress = (event: PointerEvent) => {
+      if (!root.current?.contains(event.target as Node)) setOpen(false);
+    };
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setOpen(false);
+    };
+    document.addEventListener("pointerdown", closeOnOutsidePress);
+    document.addEventListener("keydown", closeOnEscape);
+    return () => {
+      document.removeEventListener("pointerdown", closeOnOutsidePress);
+      document.removeEventListener("keydown", closeOnEscape);
+    };
+  }, [open]);
+
+  const nextTheme = theme === "dark" ? "light" : "dark";
+
+  return (
+    <div className="settings" ref={root}>
+      <button
+        className="settings__trigger"
+        type="button"
+        onClick={() => setOpen((value) => !value)}
+        aria-label="Settings"
+        aria-expanded={open}
+        aria-haspopup="dialog"
+        title="Settings"
+      >
+        <SlidersHorizontal size={17} strokeWidth={1.8} aria-hidden="true" />
+      </button>
+      <div
+        className="settings__panel"
+        data-open={open}
+        role="dialog"
+        aria-label="Settings"
+        aria-hidden={!open}
+      >
+        <span className="settings__label">Theme</span>
+        <button
+          className="settings__theme"
+          type="button"
+          onClick={() => setTheme(nextTheme)}
+          aria-label={`Switch to ${nextTheme} mode`}
+          title={`Switch to ${nextTheme} mode`}
+        >
+          <span
+            className={`settings__theme-icon${theme === "dark" ? " settings__theme-icon--active" : ""}`}
+            aria-hidden="true"
+          >
+            <Sun size={17} strokeWidth={1.8} />
+          </span>
+          <span
+            className={`settings__theme-icon${theme === "light" ? " settings__theme-icon--active" : ""}`}
+            aria-hidden="true"
+          >
+            <Moon size={17} strokeWidth={1.8} />
+          </span>
+        </button>
+      </div>
+    </div>
   );
 }

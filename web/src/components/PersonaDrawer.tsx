@@ -1,4 +1,5 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { X } from "lucide-react";
 import type { PersonaDef, PersonaPOV } from "@prism/shared";
 import { PixelPet } from "./PixelPet";
 
@@ -20,35 +21,57 @@ const RISK_LABEL: Record<string, string> = {
 export function PersonaDrawer({
   def,
   pov,
+  strengthenedPov,
+  initialRead = "first",
   context = "today",
   onClose,
 }: {
   def: PersonaDef;
   pov: PersonaPOV;
+  strengthenedPov?: PersonaPOV | null;
+  initialRead?: "first" | "strengthened";
   context?: "today" | "your articles" | "this briefing";
   onClose: () => void;
 }) {
   const [showDef, setShowDef] = useState(false);
-  const words = pov.text.trim().split(/\s+/).length;
+  const [closing, setClosing] = useState(false);
+  const closingRef = useRef(false);
+  const closeTimer = useRef<number | null>(null);
+  const [read, setRead] = useState<"first" | "strengthened">(
+    initialRead === "strengthened" && strengthenedPov ? "strengthened" : "first",
+  );
+  const displayedPov = read === "strengthened" && strengthenedPov ? strengthenedPov : pov;
+  const words = displayedPov.text.trim().split(/\s+/).length;
+
+  const requestClose = useCallback(() => {
+    if (closingRef.current) return;
+    closingRef.current = true;
+    setClosing(true);
+    closeTimer.current = window.setTimeout(onClose, 150);
+  }, [onClose]);
 
   // Close on Escape; lock body scroll while open.
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onClose();
+      if (e.key === "Escape") requestClose();
     };
     document.addEventListener("keydown", onKey);
     document.body.style.overflow = "hidden";
     return () => {
       document.removeEventListener("keydown", onKey);
       document.body.style.overflow = "";
+      if (closeTimer.current !== null) window.clearTimeout(closeTimer.current);
     };
-  }, [onClose]);
+  }, [requestClose]);
 
   return (
     <>
-      <div className="scrim" onClick={onClose} />
+      <div
+        className={`scrim${closing ? " scrim--closing" : ""}`}
+        onClick={requestClose}
+      />
       <aside
-        className="drawer"
+        className={`drawer${closing ? " drawer--closing" : ""}`}
         role="dialog"
         aria-modal="true"
         aria-label={`${def.name} — lens on ${context}`}
@@ -67,22 +90,47 @@ export function PersonaDrawer({
           </div>
           <button
             className="drawer__close"
-            onClick={onClose}
+            onClick={requestClose}
             aria-label="Close"
           >
-            ✕
+            <X size={18} strokeWidth={1.8} aria-hidden="true" />
           </button>
         </div>
 
         <div className="drawer__body">
+          {strengthenedPov && (
+            <div className="read-switch" role="tablist" aria-label="Persona read">
+              <button
+                type="button"
+                role="tab"
+                aria-selected={read === "first"}
+                onClick={() => setRead("first")}
+              >
+                First impression
+              </button>
+              <button
+                type="button"
+                role="tab"
+                aria-selected={read === "strengthened"}
+                onClick={() => setRead("strengthened")}
+              >
+                Strengthened
+              </button>
+            </div>
+          )}
+
           <div className="biaschip">
             <span className="biaschip__tag">
-              {context === "today" ? "BIAS TODAY" : "BIAS IN THIS READ"}
+              {read === "strengthened"
+                ? "BIAS AFTER ROOM READ"
+                : context === "today"
+                  ? "BIAS TODAY"
+                  : "BIAS IN THIS READ"}
             </span>
-            {pov.activeBias}
+            {displayedPov.activeBias}
           </div>
 
-          <p className="pov-text">{pov.text}</p>
+          <p className="pov-text">{displayedPov.text}</p>
 
           <div className="pov-meta">
             <span>{words} WORDS</span>
@@ -93,6 +141,8 @@ export function PersonaDrawer({
             {def.name} is a fixed, deliberately biased archetype. Its take
             reflects that bias on purpose — it is one way of reading {context}, to
             be compared against the others, never followed as a recommendation.
+            {read === "strengthened" &&
+              " This second read was written independently after reviewing the other first impressions; it is not a group consensus."}
           </p>
 
           <button

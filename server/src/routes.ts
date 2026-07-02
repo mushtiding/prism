@@ -8,7 +8,11 @@ import {
   listGeneratedHistory,
   PersonaRetryTimeoutError,
   readGeneratedHistoryDay,
+  regenerateDay,
+  revealRoomRead,
   retryMissingPersona,
+  retryMissingRoomReadPersona,
+  RoomReadUnavailableError,
 } from "./store/dailyStore.js";
 import { OpenRouterClient } from "./providers/llm.js";
 import {
@@ -42,6 +46,65 @@ router.get("/day/latest", async (_req, res, next) => {
     next(err);
   }
 });
+
+router.post("/day/latest/refresh", async (_req, res, next) => {
+  if (!isLiveMode()) {
+    res.status(503).json({ error: "Briefing refresh requires live mode." });
+    return;
+  }
+
+  try {
+    const now = new Date();
+    const date = currentCalendarDate(now);
+    res.json(await regenerateDay(date, now));
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.post("/day/latest/room-read", async (_req, res, next) => {
+  try {
+    const cacheKey = currentCalendarDate(new Date());
+    res.json(await revealRoomRead(cacheKey));
+  } catch (err) {
+    if (err instanceof RoomReadUnavailableError) {
+      res.status(409).json({ error: err.message });
+      return;
+    }
+    next(err);
+  }
+});
+
+router.post(
+  "/day/latest/room-read/personas/:personaId/retry",
+  async (req, res, next) => {
+    const personaId = req.params.personaId;
+    if (!Object.hasOwn(PERSONAS, personaId)) {
+      res.status(400).json({ error: "unknown persona" });
+      return;
+    }
+
+    try {
+      const cacheKey = currentCalendarDate(new Date());
+      res.json(
+        await retryMissingRoomReadPersona(
+          cacheKey,
+          personaId as keyof typeof PERSONAS,
+        ),
+      );
+    } catch (err) {
+      if (err instanceof PersonaRetryTimeoutError) {
+        res.status(504).json({ error: "room read persona retry timed out" });
+        return;
+      }
+      if (err instanceof RoomReadUnavailableError) {
+        res.status(409).json({ error: err.message });
+        return;
+      }
+      next(err);
+    }
+  },
+);
 
 router.post("/day/latest/personas/:personaId/retry", async (req, res, next) => {
   const personaId = req.params.personaId;
@@ -118,7 +181,18 @@ router.get("/history/:date", async (req, res, next) => {
       res.status(400).json({ error: "date must be YYYY-MM-DD" });
       return;
     }
-    const day = await readGeneratedHistoryDay(date);
+    const generatedAt =
+      typeof req.query.generatedAt === "string" ? req.query.generatedAt : undefined;
+    if (generatedAt && Number.isNaN(Date.parse(generatedAt))) {
+      res.status(400).json({ error: "generatedAt must be an ISO timestamp" });
+      return;
+    }
+    const day = await readGeneratedHistoryDay(
+      date,
+      new Date(),
+      undefined,
+      generatedAt,
+    );
     if (!day) {
       res.status(404).json({ error: "No generated briefing exists for this prior date." });
       return;

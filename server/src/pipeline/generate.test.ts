@@ -1,12 +1,18 @@
 import { describe, it, expect, vi } from "vitest";
 import {
   generateDay,
+  generateRoomRead,
+  generateRoomReadPersonaPov,
+  mergeRoomReadPov,
   mergePersonaPov,
   PERSONA_QUORUM_GRACE_MS,
   POV_RETRY_BASE_DELAY_MS,
+  RoomReadQuorumError,
+  sanitizeRoomRead,
 } from "./generate.js";
 import { generateNeutralBriefing } from "./neutralBriefing.js";
 import {
+  LlmModelUnavailableError,
   LlmRateLimitError,
   type LlmClient,
   type LlmMessage,
@@ -308,6 +314,142 @@ describe("generateDay", () => {
     expect(userPrompts[0]).toContain("OpenAI may delay its IPO until next year.");
   });
 
+  it("builds strengthened second reads from the other first impressions", async () => {
+    const roomReadPrompts: string[] = [];
+    const llm: LlmClient = {
+      async generate(messages: LlmMessage[]): Promise<string> {
+        const system = messages[0]?.content ?? "";
+        const user = messages[1]?.content ?? "";
+        const ids = keyPointIdsFromPrompt(user);
+        if (system.includes("strengthened market-lens object")) {
+          roomReadPrompts.push(user);
+          return JSON.stringify({
+            text: "Reading the other cases reinforces my focus on the evidence my lens weights most, while the opposing risks remain visible.",
+            activeBias: "sharpening the fixed lens",
+            stances: ids.map((keyPointId, index) => ({
+              keyPointId,
+              label: index === 0 ? "bullish" : "neutral",
+              score: index === 0 ? 2 : 0,
+              rationale: "The same facts carry more weight through this lens.",
+            })),
+          });
+        }
+        return validPov(ids);
+      },
+    };
+    const day = await generateDay(llm, market, "2026-06-09T12:00:00.000Z");
+
+    const roomRead = await generateRoomRead(
+      llm,
+      day.keyPoints,
+      day.povs,
+      "2026-06-09T12:05:00.000Z",
+    );
+
+    expect(roomRead.strengthenedPovs).toHaveLength(5);
+    expect(roomRead.generatedAt).toBe("2026-06-09T12:05:00.000Z");
+    expect(roomRead.briefing).toContain("After reading the room");
+    expect(roomRead.briefing).toContain("moving from");
+    expect(roomReadPrompts).toHaveLength(5);
+    expect(roomReadPrompts[0]).toContain("Your first impression");
+    expect(roomReadPrompts[0]).toContain("Other personas' first impressions");
+    expect(roomReadPrompts[0]).toContain("growth:");
+  });
+
+  it("rejects a room read that does not reach a meaningful quorum", async () => {
+    const firstPassLlm = makeLlm(() => validPov());
+    const day = await generateDay(
+      firstPassLlm,
+      market,
+      "2026-06-09T12:00:00.000Z",
+    );
+    const roomLlm = makeLlm((name) =>
+      name === "Growth bull"
+        ? validPov()
+        : JSON.stringify({ text: "...", activeBias: "none", stances: [] }),
+    );
+
+    await expect(
+      generateRoomRead(
+        roomLlm,
+        day.keyPoints,
+        day.povs,
+        "2026-06-09T12:05:00.000Z",
+      ),
+    ).rejects.toBeInstanceOf(RoomReadQuorumError);
+  });
+
+  it("rejects a strengthened read that repeats the first impression", async () => {
+    const firstPassLlm = makeLlm(() => validPov());
+    const day = await generateDay(
+      firstPassLlm,
+      market,
+      "2026-06-09T12:00:00.000Z",
+    );
+    let calls = 0;
+    const duplicateLlm: LlmClient = {
+      async generate(messages: LlmMessage[]): Promise<string> {
+        calls += 1;
+        return validPov(keyPointIdsFromPrompt(messages[1]?.content ?? ""));
+      },
+    };
+
+    await expect(
+      generateRoomReadPersonaPov(
+        duplicateLlm,
+        "momentum",
+        day.keyPoints,
+        day.povs,
+      ),
+    ).rejects.toThrow(/repeats the first impression/);
+    expect(calls).toBe(3);
+  });
+
+  it("sanitizes cached duplicates and merges a distinct persona retry", async () => {
+    const firstPassLlm = makeLlm(() => validPov());
+    const day = await generateDay(
+      firstPassLlm,
+      market,
+      "2026-06-09T12:00:00.000Z",
+    );
+    const momentum = day.povs.find((pov) => pov.personaId === "momentum")!;
+    const growth = day.povs.find((pov) => pov.personaId === "growth")!;
+    const cached = {
+      ...day,
+      roomRead: {
+        generatedAt: "2026-06-09T12:05:00.000Z",
+        briefing: "stale briefing",
+        divergence: day.dayDivergence,
+        strengthenedPovs: [
+          momentum,
+          {
+            ...growth,
+            text: "The room sharpened my long-term growth case while making the short-term risks clearer and more specific.",
+          },
+        ],
+      },
+    };
+
+    const sanitized = sanitizeRoomRead(cached);
+    expect(sanitized.roomRead?.strengthenedPovs.map((pov) => pov.personaId)).toEqual([
+      "growth",
+    ]);
+
+    const merged = mergeRoomReadPov(
+      sanitized,
+      {
+        ...momentum,
+        text: "After reading the room, the price trend still dominates my view, but the opposing risk case makes my conviction more precise.",
+      },
+      "2026-06-09T12:08:00.000Z",
+    );
+    expect(merged.roomRead?.strengthenedPovs.map((pov) => pov.personaId)).toEqual([
+      "momentum",
+      "growth",
+    ]);
+    expect(merged.roomRead?.briefing).toContain("After reading the room");
+  });
+
   it("retries when a persona model returns malformed JSON", async () => {
     const calls = new Map<string, number>();
     const llm: LlmClient = {
@@ -393,6 +535,22 @@ describe("generateDay", () => {
     expect(calls).toBe(5);
     expect(day.source).toBe("live");
     expect(day.keyPoints).toHaveLength(4);
+    expect(day.povs).toHaveLength(0);
+  });
+
+  it("does not retry persona calls when the configured model has no endpoint", async () => {
+    let calls = 0;
+    const llm: LlmClient = {
+      async generate(): Promise<string> {
+        calls += 1;
+        throw new LlmModelUnavailableError("404 No endpoints found");
+      },
+    };
+
+    const day = await generateDay(llm, market, "2026-06-09T12:00:00.000Z");
+
+    expect(calls).toBe(5);
+    expect(day.source).toBe("live");
     expect(day.povs).toHaveLength(0);
   });
 

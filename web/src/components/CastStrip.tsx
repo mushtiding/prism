@@ -4,6 +4,7 @@ import { PERSONA_IDS } from "@prism/shared";
 import { PERSONA_STYLE } from "../personaStyle";
 import { PixelPet } from "./PixelPet";
 import { Habitat } from "./Habitat";
+import { RoomReadPanel } from "./RoomReadPanel";
 
 /** Average a persona's conviction across the day's key points → overall lean. */
 function dailyLean(day: DayContent, id: PersonaId): number | null {
@@ -30,11 +31,21 @@ export function CastStrip({
   defs,
   onPick,
   onRetry,
+  onRevealRoomRead,
+  onRetryRoomRead,
+  revealingRoomRead = false,
+  roomReadElapsed = 0,
+  roomReadError = null,
 }: {
   day: DayContent;
   defs: PersonaDef[];
-  onPick: (id: PersonaId) => void;
+  onPick: (id: PersonaId, read?: "first" | "strengthened") => void;
   onRetry?: (id: PersonaId, signal: AbortSignal) => Promise<void>;
+  onRevealRoomRead?: () => void;
+  onRetryRoomRead?: (id: PersonaId, signal: AbortSignal) => Promise<void>;
+  revealingRoomRead?: boolean;
+  roomReadElapsed?: number;
+  roomReadError?: string | null;
 }) {
   // Which persona is currently highlighted (by pet click or card hover).
   const [highlight, setHighlight] = useState<PersonaId | null>(null);
@@ -101,7 +112,7 @@ export function CastStrip({
         available={available}
         onSelect={(id) => {
           setHighlight(id);
-          onPick(id);
+          onPick(id, "first");
         }}
         onHover={setHighlight}
       />
@@ -160,7 +171,7 @@ export function CastStrip({
               className={className}
               key={id}
               style={cardStyle}
-              onClick={() => onPick(id)}
+              onClick={() => onPick(id, "first")}
               onMouseEnter={() => setHighlight(id)}
               onMouseLeave={() => setHighlight(null)}
             >
@@ -173,6 +184,17 @@ export function CastStrip({
           );
         })}
       </div>
+
+      <RoomReadPanel
+        day={day}
+        defs={defs}
+        onPick={(id) => onPick(id, "strengthened")}
+        onReveal={onRevealRoomRead}
+        onRetry={onRetryRoomRead}
+        revealing={revealingRoomRead}
+        elapsed={roomReadElapsed}
+        error={roomReadError}
+      />
     </section>
   );
 }

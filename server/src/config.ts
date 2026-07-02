@@ -28,11 +28,11 @@ function unique(values: string[]): string[] {
 }
 
 const defaultOpenRouterModel =
-  process.env.OPENROUTER_MODEL || "openrouter/owl-alpha";
+  process.env.OPENROUTER_MODEL || "nvidia/nemotron-3-super-120b-a12b:free";
 
 export const config: Config = {
   host: process.env.HOST || "0.0.0.0",
-  port: Number(process.env.PORT) || 8787,
+  port: Number(process.env.PORT) || 8788,
   openRouterApiKey: process.env.OPENROUTER_API_KEY || undefined,
   openRouterModel: defaultOpenRouterModel,
   openRouterModels: unique([
