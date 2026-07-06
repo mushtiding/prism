@@ -2,7 +2,7 @@
   "name": "prism",
   "version": "0.1.0",
   "private": true,
-  "description": "Prism — one neutral beam of news, refracted into a spectrum of biased lenses",
+  "description": "Prism — compare five market perspectives on the same evidence",
   "workspaces": [
     "shared",
     "server",

@@ -14,6 +14,17 @@ function lean(pov: PersonaPOV): string {
   return "mixed";
 }
 
+function secondViewSummary(text: string): string {
+  return text
+    .replace(/^After reading the room,/, "After comparing perspectives,")
+    .replace(/each available lens/gi, "each available perspective")
+    .replace(/strengthened reads/gi, "second views")
+    .replace(/Overall divergence/g, "The overall disagreement score")
+    .replace(/first-impression level/gi, "initial-view level")
+    .replace(/Value \/ quality/g, "Value investor")
+    .replace(/Macro \/ risk manager/g, "Macro risk manager");
+}
+
 export function RoomReadPanel({
   day,
   defs,
@@ -67,7 +78,7 @@ export function RoomReadPanel({
     } catch (err) {
       setRetryErrors((current) => ({
         ...current,
-        [id]: err instanceof Error ? err.message : "Retry failed.",
+        [id]: err instanceof Error ? err.message : "Could not prepare this view.",
       }));
     } finally {
       window.clearInterval(ticker);
@@ -92,15 +103,15 @@ export function RoomReadPanel({
           disabled={revealing || day.povs.length < 2}
           title={
             day.povs.length < 2
-              ? "Room Read needs at least two first impressions"
+              ? "Second views need at least two initial perspectives"
               : revealing
-                ? `Reading the room · ${elapsed}s elapsed`
-                : "Reveal room read"
+                ? `Preparing second views · ${elapsed}s elapsed`
+                : "Generate second views"
           }
           aria-label={
             revealing
-              ? `Personas are reading the room, ${elapsed} seconds elapsed`
-              : "Reveal strengthened persona reads"
+              ? `Preparing second views, ${elapsed} seconds elapsed`
+              : "Generate second views after comparing perspectives"
           }
         >
           {revealing ? (
@@ -112,7 +123,9 @@ export function RoomReadPanel({
           ) : (
             <Eye size={16} aria-hidden="true" />
           )}
-          <span>{revealing ? `Reading the room · ${elapsed}s` : "Reveal room read"}</span>
+          <span>
+            {revealing ? `Preparing second views · ${elapsed}s` : "Generate second views"}
+          </span>
         </button>
         {error && (
           <p className="room-read-reveal__error" role="alert">
@@ -134,14 +147,14 @@ export function RoomReadPanel({
   return (
     <section className="room-read" aria-labelledby="room-read-title">
       <div className="section-label" id="room-read-title">
-        Room read · {day.roomRead.strengthenedPovs.length} of {roomPersonaIds.length}{" "}
-        strengthened
+        Second views · {day.roomRead.strengthenedPovs.length} of {roomPersonaIds.length}{" "}
+        ready
       </div>
       <div className="room-read__briefing">
         <BookOpenCheck size={18} strokeWidth={1.8} aria-hidden="true" />
         <div>
-          <span className="room-read__eyebrow">After reading the room</span>
-          <p>{day.roomRead.briefing}</p>
+          <span className="room-read__eyebrow">After comparing perspectives</span>
+          <p>{secondViewSummary(day.roomRead.briefing)}</p>
         </div>
       </div>
       <div className="room-read__grid">
@@ -159,7 +172,7 @@ export function RoomReadPanel({
               onClick={() => onPick(personaId)}
             >
               <span className="strengthened-card__top">
-                <span className="strengthened-card__label">Strengthened</span>
+                <span className="strengthened-card__label">Second view</span>
                 <span className="strengthened-card__lean mono">{lean(pov)}</span>
               </span>
               <span className="strengthened-card__name" style={{ color: style.color }}>
@@ -167,7 +180,7 @@ export function RoomReadPanel({
               </span>
               <span className="strengthened-card__bias">{pov.activeBias}</span>
               <span className="strengthened-card__excerpt">{pov.text}</span>
-              <span className="strengthened-card__cta">Read strengthened lens →</span>
+              <span className="strengthened-card__cta">Read second view →</span>
             </button>
           );
           const secondsLeft = waiting[personaId];
@@ -181,7 +194,7 @@ export function RoomReadPanel({
               <span className="strengthened-card__top">
                 <span className="strengthened-card__label">Unavailable</span>
                 <span className="strengthened-card__lean mono">
-                  {isWaiting ? `${secondsLeft}s` : "no second read"}
+                  {isWaiting ? `${secondsLeft}s` : "no second view"}
                 </span>
               </span>
               <span className="strengthened-card__name" style={{ color: style.color }}>
@@ -189,7 +202,7 @@ export function RoomReadPanel({
               </span>
               <span className="strengthened-card__bias">{def.name}</span>
               <span className="strengthened-card__excerpt">
-                No distinct strengthened opinion returned.
+                No distinct second perspective was returned.
               </span>
               {retryErrors[personaId] && (
                 <span className="strengthened-card__error" role="alert">
@@ -212,7 +225,7 @@ export function RoomReadPanel({
                   ) : (
                     <RefreshCw size={14} aria-hidden="true" />
                   )}
-                  <span>{isWaiting ? "Waiting" : "Retry"}</span>
+                  <span>{isWaiting ? "Preparing" : "Try again"}</span>
                 </button>
               )}
             </article>
@@ -221,8 +234,8 @@ export function RoomReadPanel({
       </div>
       {missingCount > 0 && !onRetry && (
         <p className="room-read__partial-note">
-          {missingCount} strengthened lens{missingCount === 1 ? " is" : "es are"}{" "}
-          unavailable in this saved briefing.
+          {missingCount} second view{missingCount === 1 ? " is" : "s are"}{" "}
+          unavailable in this saved brief.
         </p>
       )}
     </section>

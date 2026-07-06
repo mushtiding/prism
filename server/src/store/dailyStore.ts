@@ -202,7 +202,7 @@ export async function listGeneratedHistory(
               keyPointCount: day.keyPoints.length,
               personaCount: day.povs.length,
               leadSummary:
-                day.keyPoints[0]?.summary ?? "Generated market briefing",
+                day.keyPoints[0]?.summary ?? "Saved market brief",
             })),
           },
         ]
@@ -457,18 +457,18 @@ export async function retryMissingPersona(
 /** Reveal and persist one independent second pass for the latest briefing. */
 export async function revealRoomRead(cacheKey: string): Promise<DayContent> {
   const cached = await readCache(cacheKey);
-  if (!cached) throw new RoomReadUnavailableError(`No cached day found for ${cacheKey}`);
+  if (!cached) throw new RoomReadUnavailableError("No current brief is available");
   if (cached.roomRead) return cached;
   if (cached.kind !== "daily" || cached.source !== "live") {
-    throw new RoomReadUnavailableError("Room Read requires a live daily briefing");
+    throw new RoomReadUnavailableError("Second views require a live daily brief");
   }
   if (cached.povs.length < 2) {
     throw new RoomReadUnavailableError(
-      "Room Read needs at least two available first impressions",
+      "Second views need at least two available initial perspectives",
     );
   }
   if (!isLiveMode()) {
-    throw new RoomReadUnavailableError("Room Read requires live mode");
+    throw new RoomReadUnavailableError("Second views require live market data");
   }
 
   const requestKey = `${cacheKey}:${cached.generatedAt}`;
@@ -494,7 +494,7 @@ export async function revealRoomRead(cacheKey: string): Promise<DayContent> {
       } catch (err) {
         if (err instanceof RoomReadQuorumError) {
           throw new RoomReadUnavailableError(
-            `Room Read reached ${err.completed}/${cached.povs.length} strengthened lenses; ${err.required} are required. Try again.`,
+            `${err.completed} of ${cached.povs.length} second views were ready; ${err.required} are required. Try again.`,
           );
         }
         throw err;
@@ -504,7 +504,7 @@ export async function revealRoomRead(cacheKey: string): Promise<DayContent> {
         const current = await readCache(cacheKey);
         if (!current || current.generatedAt !== cached.generatedAt) {
           throw new RoomReadUnavailableError(
-            "The briefing changed while Room Read was being generated. Reveal the new briefing instead.",
+            "The brief changed while second views were being prepared. Generate them for the latest brief instead.",
           );
         }
         updated = current.roomRead ? current : { ...current, roomRead };
@@ -531,20 +531,20 @@ export async function retryMissingRoomReadPersona(
   personaId: PersonaId,
 ): Promise<DayContent> {
   const cached = await readCache(cacheKey);
-  if (!cached) throw new RoomReadUnavailableError(`No cached day found for ${cacheKey}`);
+  if (!cached) throw new RoomReadUnavailableError("No current brief is available");
   if (!cached.roomRead) {
-    throw new RoomReadUnavailableError("Reveal Room Read before retrying a lens");
+    throw new RoomReadUnavailableError("Generate second views before retrying one");
   }
   if (!cached.povs.some((pov) => pov.personaId === personaId)) {
     throw new RoomReadUnavailableError(
-      `No first impression is available for ${personaId}`,
+      `No initial view is available for ${personaId}`,
     );
   }
   if (cached.roomRead.strengthenedPovs.some((pov) => pov.personaId === personaId)) {
     return cached;
   }
   if (!isLiveMode()) {
-    throw new RoomReadUnavailableError("Room Read retries require live mode");
+    throw new RoomReadUnavailableError("Second-view retries require live market data");
   }
 
   const retryKey = `${cacheKey}:${cached.generatedAt}:room-read:${personaId}`;
@@ -577,7 +577,7 @@ export async function retryMissingRoomReadPersona(
         if (err instanceof PersonaRetryTimeoutError) throw err;
         logEvent(`room read persona retry failed · ${personaId} · ${String(err)}`);
         throw new RoomReadUnavailableError(
-          `${personaId} did not return a distinct strengthened read. Try again.`,
+          `${personaId} did not return a distinct second view. Try again.`,
         );
       }
 
@@ -586,7 +586,7 @@ export async function retryMissingRoomReadPersona(
         const current = await readCache(cacheKey);
         if (!current || current.generatedAt !== cached.generatedAt) {
           throw new RoomReadUnavailableError(
-            "The briefing changed during the retry. Open the latest briefing instead.",
+            "The brief changed during the retry. Open the latest brief instead.",
           );
         }
         updated = mergeRoomReadPov(current, pov, new Date().toISOString());

@@ -165,7 +165,7 @@ export default function App() {
       setToday(await api.refreshLatestDay());
     } catch (err) {
       setRefreshError(
-        err instanceof Error ? err.message : "Could not refresh the briefing.",
+        err instanceof Error ? err.message : "Could not update the brief.",
       );
     } finally {
       setRefreshingToday(false);
@@ -183,7 +183,7 @@ export default function App() {
       setToday(await api.revealLatestRoomRead());
     } catch (err) {
       setRoomReadError(
-        err instanceof Error ? err.message : "Could not reveal the room read.",
+        err instanceof Error ? err.message : "Could not prepare second views.",
       );
     } finally {
       setRevealingRoomRead(false);
@@ -224,7 +224,7 @@ export default function App() {
     return (
       <Shell health={health} day={today} view={view} setView={switchView}>
         <div className="center-state">
-          <span className="pulse">Refracting today’s briefing…</span>
+          <span className="pulse">Preparing today’s brief…</span>
         </div>
       </Shell>
     );
@@ -233,7 +233,7 @@ export default function App() {
   return (
     <Shell health={health} day={today} view={view} setView={switchView}>
       {view === "today" && (
-        <>
+        <div className="today-view">
           <Hero day={today} />
           <DayBody
             day={today}
@@ -258,7 +258,7 @@ export default function App() {
               setToday(updated);
             }}
           />
-        </>
+        </div>
       )}
 
       {view === "history" && (
@@ -292,9 +292,9 @@ export default function App() {
           initialRead={activeRead}
           context={
             current?.kind === "myLens"
-              ? "your articles"
+              ? "your brief"
               : view === "history"
-                ? "this briefing"
+                ? "this brief"
                 : "today"
           }
           onClose={() => setActive(null)}
@@ -336,15 +336,21 @@ function DayBody({
   return (
     <>
       <section className="keypoints">
-        <div className="section-label">
-          <span>What moved · {day.keyPoints.length} key points</span>
+        <div className="section-heading">
+          <div className="section-heading__copy">
+            <span className="section-heading__eyebrow mono">Market drivers</span>
+            <h2>What moved markets</h2>
+            <span className="section-heading__count mono">
+              {day.keyPoints.length} driver{day.keyPoints.length === 1 ? "" : "s"}
+            </span>
+          </div>
           <span className="section-label__tools">
             <time
               className="section-label__timestamp"
               dateTime={day.generatedAt}
-              title={`Briefing generated ${new Date(day.generatedAt).toLocaleString()}`}
+              title={`Brief updated ${new Date(day.generatedAt).toLocaleString()}`}
             >
-              Generated {formatBriefingTime(day.generatedAt)}
+              Updated {formatBriefingTime(day.generatedAt)}
             </time>
             {onRefresh && (
               <button
@@ -354,13 +360,13 @@ function DayBody({
                 disabled={refreshing}
                 aria-label={
                   refreshing
-                    ? `Refreshing briefing, ${refreshElapsed} seconds elapsed`
-                    : "Refresh briefing with current market news"
+                    ? `Updating brief, ${refreshElapsed} seconds elapsed`
+                    : "Update brief with the latest market news"
                 }
                 title={
                   refreshing
-                    ? `Refreshing · ${refreshElapsed}s elapsed`
-                    : "Refresh briefing"
+                    ? `Updating · ${refreshElapsed}s elapsed`
+                    : "Update brief"
                 }
               >
                 <RefreshCw
@@ -375,12 +381,19 @@ function DayBody({
         </div>
         {refreshError && (
           <p className="keypoints__refresh-error" role="alert">
-            Refresh failed. The previous briefing was kept. {refreshError}
+            Update failed. Your previous brief is still here. {refreshError}
           </p>
         )}
-        {day.keyPoints.map((kp) => (
-          <KeyPointCard key={kp.id} keyPoint={kp} povs={day.povs} />
-        ))}
+        <div className="keypoints__list">
+          {day.keyPoints.map((kp, index) => (
+            <KeyPointCard
+              key={kp.id}
+              index={index}
+              keyPoint={kp}
+              povs={day.povs}
+            />
+          ))}
+        </div>
       </section>
       <CastStrip
         day={day}
@@ -446,11 +459,11 @@ function HistoryView({
       <>
         <div className="tm-banner">
           <span className="tm-banner__txt">
-            Viewing the <b>{formatBriefingTime(day.generatedAt)}</b> briefing for{" "}
+            Viewing the <b>{formatBriefingTime(day.generatedAt)}</b> brief for{" "}
             <b>{formatHistoryDate(day.date)}</b>.
           </span>
           <button className="nav-btn" onClick={onBack}>
-            ← History
+            ← Archive
           </button>
         </div>
         <Hero day={day} />
@@ -462,7 +475,7 @@ function HistoryView({
   if (loading) {
     return (
       <div className="center-state">
-        <span className="pulse">Opening briefing…</span>
+        <span className="pulse">Opening brief…</span>
       </div>
     );
   }
@@ -492,13 +505,13 @@ function HistoryView({
 
   return (
     <section className="tm">
-      <div className="section-label">History</div>
+      <div className="section-label">Archive</div>
       <p className="tm__intro">
-        Every generated briefing is saved under its calendar date. Choose a day,
-        then select the generation time you want to revisit.
+        Every brief you generate is saved by date. Choose a day, then select the
+        version you want to revisit.
       </p>
       {history.length === 0 ? (
-        <div className="history-empty">No prior generated briefings yet.</div>
+        <div className="history-empty">No saved briefs yet.</div>
       ) : (
         <div className="history-workspace">
           <div className="history-calendar">
@@ -508,7 +521,7 @@ function HistoryView({
                 type="button"
                 onClick={() => moveMonth(-1)}
                 disabled={monthIndex <= 0}
-                aria-label="Previous history month"
+                aria-label="Previous month"
                 title="Previous month"
               >
                 <ChevronLeft size={16} aria-hidden="true" />
@@ -521,7 +534,7 @@ function HistoryView({
                 type="button"
                 onClick={() => moveMonth(1)}
                 disabled={monthIndex < 0 || monthIndex >= historyMonths.length - 1}
-                aria-label="Next history month"
+                aria-label="Next month"
                 title="Next month"
               >
                 <ChevronRight size={16} aria-hidden="true" />
@@ -548,7 +561,7 @@ function HistoryView({
                     type="button"
                     disabled={!available}
                     aria-pressed={selected}
-                    aria-label={`${formatHistoryDate(cell.date)}${available ? `, ${briefingCount} generated briefing${briefingCount === 1 ? "" : "s"}` : ", no briefing"}`}
+                    aria-label={`${formatHistoryDate(cell.date)}${available ? `, ${briefingCount} saved brief${briefingCount === 1 ? "" : "s"}` : ", no saved brief"}`}
                     onClick={() => {
                       setSelectedDate(cell.date);
                       setSelectedGeneratedAt(
@@ -578,7 +591,7 @@ function HistoryView({
               <div
                 className="history-overview__versions"
                 role="group"
-                aria-label={`Briefings generated on ${formatHistoryDate(selectedEntry.date)}`}
+                aria-label={`Saved briefs for ${formatHistoryDate(selectedEntry.date)}`}
               >
                 {selectedEntry.briefings.map((briefing) => (
                   <button
@@ -588,7 +601,7 @@ function HistoryView({
                     aria-pressed={
                       briefing.generatedAt === selectedBriefing.generatedAt
                     }
-                    title={`Generated ${formatHistoryTimestamp(briefing.generatedAt)}`}
+                    title={`Saved ${formatHistoryTimestamp(briefing.generatedAt)}`}
                     onClick={() =>
                       setSelectedGeneratedAt(briefing.generatedAt)
                     }
@@ -600,15 +613,15 @@ function HistoryView({
               <h2>{selectedBriefing.leadSummary}</h2>
               <div className="history-overview__metrics">
                 <span>
-                  <b>{selectedBriefing.keyPointCount}</b> market move
+                  <b>{selectedBriefing.keyPointCount}</b> market driver
                   {selectedBriefing.keyPointCount === 1 ? "" : "s"}
                 </span>
                 <span>
-                  <b>{selectedBriefing.personaCount}/5</b> lenses available
+                  <b>{selectedBriefing.personaCount}/5</b> perspectives ready
                 </span>
               </div>
               <p className="history-overview__generated mono">
-                Generated {formatHistoryTimestamp(selectedBriefing.generatedAt)}
+                Saved {formatHistoryTimestamp(selectedBriefing.generatedAt)}
               </p>
               <button
                 className="history-overview__open"
@@ -617,7 +630,7 @@ function HistoryView({
                   onOpen(selectedEntry.date, selectedBriefing.generatedAt)
                 }
               >
-                Open full analysis
+                Open brief
                 <ArrowRight size={16} aria-hidden="true" />
               </button>
             </section>
@@ -717,30 +730,35 @@ function Shell({
             />
             <div className="wordmark__copy">
               <h1>Prism</h1>
-              <span className="wordmark__tag">the disagreement is the signal</span>
+              <span className="wordmark__tag">see where market views split</span>
             </div>
           </div>
-          <div className="masthead__right">
-            <button
-              className={`nav-btn${view === "today" ? " nav-btn--active" : ""}`}
-              onClick={() => setView("today")}
-            >
-              Today
-            </button>
-            <button
-              className={`nav-btn${view === "myLens" ? " nav-btn--active" : ""}`}
-              onClick={() => setView("myLens")}
-            >
-              Your Moves
-            </button>
-            <button
-              className={`nav-btn${
-                view === "history" ? " nav-btn--active" : ""
-              }`}
-              onClick={() => setView("history")}
-            >
-              History
-            </button>
+          <div className="masthead__controls">
+            <nav className="primary-nav" aria-label="Primary navigation">
+              <button
+                className={`nav-btn${view === "today" ? " nav-btn--active" : ""}`}
+                onClick={() => setView("today")}
+                aria-current={view === "today" ? "page" : undefined}
+              >
+                Today
+              </button>
+              <button
+                className={`nav-btn${view === "myLens" ? " nav-btn--active" : ""}`}
+                onClick={() => setView("myLens")}
+                aria-current={view === "myLens" ? "page" : undefined}
+              >
+                Your Brief
+              </button>
+              <button
+                className={`nav-btn${
+                  view === "history" ? " nav-btn--active" : ""
+                }`}
+                onClick={() => setView("history")}
+                aria-current={view === "history" ? "page" : undefined}
+              >
+                Archive
+              </button>
+            </nav>
             {health && (
               <span
                 className={`badge ${
@@ -748,10 +766,10 @@ function Shell({
                 }`}
                 title={
                   showingSample && health.mode === "live"
-                    ? "Live generation failed — showing bundled sample day"
+                    ? "Live update failed — showing sample data"
                     : badgeLive
-                      ? `Live · ${health.model}`
-                      : "Sample data — set API keys for live generation"
+                      ? `Using live market data · ${health.model}`
+                      : "Using sample market data"
                 }
               >
                 {showingSample
@@ -765,7 +783,7 @@ function Shell({
           </div>
         </div>
       </header>
-      <main className="shell">{children}</main>
+      <main className={`shell shell--${view}`}>{children}</main>
     </>
   );
 }
@@ -826,7 +844,7 @@ function SettingsMenu() {
         aria-label="Settings"
         aria-hidden={!open}
       >
-        <span className="settings__label">Theme</span>
+        <span className="settings__label">Appearance</span>
         <button
           className="settings__theme"
           type="button"

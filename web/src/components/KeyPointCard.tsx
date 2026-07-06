@@ -6,9 +6,9 @@ import { PERSONA_STYLE, magnitudeDirection } from "../personaStyle";
 import { Spectrum, type SpectrumPoint } from "./Spectrum";
 
 const LEVEL_WORD = {
-  consensus: "Consensus",
+  consensus: "Aligned",
   mixed: "Mixed",
-  contested: "Contested",
+  contested: "Divided",
 } as const;
 
 /**
@@ -17,9 +17,11 @@ const LEVEL_WORD = {
  * stance on this specific event.
  */
 export function KeyPointCard({
+  index = 0,
   keyPoint,
   povs,
 }: {
+  index?: number;
   keyPoint: KeyPoint;
   povs: PersonaPOV[];
 }) {
@@ -39,6 +41,9 @@ export function KeyPointCard({
         onClick={() => setOpen((o) => !o)}
         aria-expanded={open}
       >
+        <span className="kp__index mono">
+          {String(index + 1).padStart(2, "0")}
+        </span>
         <div className="kp__main">
           <div className="kp__summary">{keyPoint.summary}</div>
           <div className="kp__meta">
@@ -58,13 +63,13 @@ export function KeyPointCard({
             <span className="kp__divlabel">
               {points.length >= 2
                 ? `${LEVEL_WORD[keyPoint.divergence.level]} · ${keyPoint.divergence.score.toFixed(2)}`
-                : "Awaiting lenses"}
+                : "Perspectives pending"}
             </span>
           </div>
         </div>
         <div className="kp__right">
           <div className="kp__spectrum">
-            <Spectrum points={points} size="sm" />
+            <Spectrum points={points} size="md" />
           </div>
           <ChevronDown
             className="kp__chev"
@@ -112,7 +117,7 @@ export function KeyPointCard({
 
             {points.length > 0 && (
               <div className="stancegrid">
-                <span className="stancegrid__label">How each lens reads it</span>
+                <span className="stancegrid__label">Perspective breakdown</span>
                 {PERSONA_IDS.map((id) => {
                   const pov = povs.find((p) => p.personaId === id);
                   const stance = pov?.stances.find(

@@ -474,10 +474,12 @@ function roomReadBriefing(
 
   return [
     focus
-      ? `After reading the room, the strongest split centered on ${focus.summary}`
-      : "After reading the room, each available lens sharpened its independent case.",
-    sides.length > 0 ? `${sides.join(", while ")}.` : "The strengthened reads stayed close to neutral.",
-    `Overall divergence ${shiftText}, moving from ${firstDivergence.score.toFixed(2)} to ${strengthenedDivergence.score.toFixed(2)}.`,
+      ? `After comparing perspectives, the strongest split centered on ${focus.summary}`
+      : "After comparing perspectives, each available lens refined its independent case.",
+    sides.length > 0
+      ? `${sides.join(", while ")}.`
+      : "The second views stayed close to neutral.",
+    `The overall disagreement score ${shiftText}, moving from ${firstDivergence.score.toFixed(2)} to ${strengthenedDivergence.score.toFixed(2)}.`,
   ].join(" ");
 }
 
@@ -509,7 +511,7 @@ export function sanitizeRoomRead(day: DayContent): DayContent {
       briefing:
         strengthenedPovs.length > 0
           ? roomReadBriefing(day.keyPoints, day.povs, strengthenedPovs)
-          : "No distinct strengthened reads returned. Retry the unavailable lenses.",
+          : "No distinct second views returned. Try the unavailable perspectives again.",
     },
   };
 }

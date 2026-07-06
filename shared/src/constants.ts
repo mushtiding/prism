@@ -14,5 +14,5 @@ export const MAX_POV_WORDS = 200;
 
 /** Persistent compliance framing shown across the app (FR-10). */
 export const DISCLAIMER =
-  "Every take here is one lens — an opinion, not investment advice. " +
-  "Prism is not personalized to you and never tells you to buy, sell, or hold.";
+  "Each view is a deliberately biased perspective, not investment advice. " +
+  "Prism is not personalized and never tells you to buy, sell, or hold.";

@@ -33,7 +33,7 @@ export const PERSONAS: Record<PersonaId, PersonaDef> = {
   },
   value: {
     id: "value",
-    name: "Value / quality",
+    name: "Value investor",
     horizon: "long",
     risk: "defensive",
     biases: ["anchoring", "margin-of-safety insistence"],
@@ -46,7 +46,7 @@ export const PERSONAS: Record<PersonaId, PersonaDef> = {
   },
   macro: {
     id: "macro",
-    name: "Macro / risk manager",
+    name: "Macro risk manager",
     horizon: "short",
     risk: "defensive",
     biases: ["loss aversion", "fighting the last crisis"],

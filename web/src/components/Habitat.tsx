@@ -78,7 +78,7 @@ export function Habitat({
     <div
       className="habitat"
       role="group"
-      aria-label="Persona house. Select a character to read its lens."
+      aria-label="Market perspective room. Select a character to read its view."
     >
       <div className="habitat__wall" aria-hidden="true">
         <div className="habitat__window">
@@ -149,7 +149,7 @@ export function Habitat({
             onMouseEnter={() => onHover(id)}
             onMouseLeave={() => onHover(null)}
             title={`${persona.charName} · ${persona.short} · ${spot.activity}`}
-            aria-label={`${persona.charName}, the ${persona.short} lens, ${spot.activity}`}
+            aria-label={`${persona.charName}, the ${persona.short} perspective, ${spot.activity}`}
           >
             <span className="room-pet__shadow" />
             <span

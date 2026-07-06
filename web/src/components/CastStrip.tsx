@@ -16,9 +16,9 @@ function dailyLean(day: DayContent, id: PersonaId): number | null {
 
 function leanWord(lean: number | null): string {
   if (lean === null) return "unavailable";
-  if (lean > 0.5) return "leans bullish";
-  if (lean < -0.5) return "leans bearish";
-  return "mixed / neutral";
+  if (lean > 0.5) return "bullish lean";
+  if (lean < -0.5) return "bearish lean";
+  return "mixed";
 }
 
 /**
@@ -103,8 +103,8 @@ export function CastStrip({
     <section className="cast">
       <div className="section-label">
         {hasEveryLens
-          ? `The cast · five lenses${isMyLens ? "" : " on today"}`
-          : `The cast · ${available.size} of five lenses available`}
+          ? "Market perspectives · 5 of 5 ready"
+          : `Market perspectives · ${available.size} of 5 ready`}
       </div>
 
       <Habitat
@@ -135,7 +135,7 @@ export function CastStrip({
                   <PixelPet id={id} px={4} />
                 </span>
                 <span className="persona-card__stance mono">
-                  {isWaiting ? `waiting · ${secondsLeft}s` : leanWord(lean)}
+                  {isWaiting ? `preparing · ${secondsLeft}s` : leanWord(lean)}
                 </span>
               </div>
               <div className="persona-card__charname" style={{ color: style.color }}>
@@ -145,10 +145,10 @@ export function CastStrip({
               <div className="persona-card__world">{def.worldview}</div>
               <span className="persona-card__cta">
                 {isAvailable
-                  ? `Read ${isMyLens ? "this" : "today's"} lens →`
+                  ? `Read ${isMyLens ? "article" : "today's"} view →`
                   : isWaiting
-                    ? "Waiting for model"
-                    : "Lens unavailable"}
+                    ? "Preparing view"
+                    : "View unavailable"}
               </span>
               {!isAvailable && !isWaiting && onRetry && (
                 <button
@@ -157,7 +157,7 @@ export function CastStrip({
                   onClick={() => void retryPersona(id)}
                   type="button"
                 >
-                  Retry
+                  Try again
                 </button>
               )}
             </>

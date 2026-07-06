@@ -377,7 +377,7 @@ button {
   line-height: 1.5;
 }
 .disclaimer::before {
-  content: "LENS";
+  content: "NOTE";
   font-family: var(--font-mono);
   font-size: 9px;
   letter-spacing: 0.14em;

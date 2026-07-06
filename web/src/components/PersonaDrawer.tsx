@@ -4,8 +4,8 @@ import type { PersonaDef, PersonaPOV } from "@prism/shared";
 import { PixelPet } from "./PixelPet";
 
 const HORIZON_LABEL: Record<string, string> = {
-  short: "Short term",
-  long: "Long term",
+  short: "Short-term",
+  long: "Long-term",
   origin: "Relative to consensus",
 };
 const RISK_LABEL: Record<string, string> = {
@@ -30,7 +30,7 @@ export function PersonaDrawer({
   pov: PersonaPOV;
   strengthenedPov?: PersonaPOV | null;
   initialRead?: "first" | "strengthened";
-  context?: "today" | "your articles" | "this briefing";
+  context?: "today" | "your brief" | "this brief";
   onClose: () => void;
 }) {
   const [showDef, setShowDef] = useState(false);
@@ -74,7 +74,7 @@ export function PersonaDrawer({
         className={`drawer${closing ? " drawer--closing" : ""}`}
         role="dialog"
         aria-modal="true"
-        aria-label={`${def.name} — lens on ${context}`}
+        aria-label={`${def.name} — perspective on ${context}`}
       >
         <div className="drawer__bar">
           <div className="drawer__bar-left">
@@ -99,14 +99,14 @@ export function PersonaDrawer({
 
         <div className="drawer__body">
           {strengthenedPov && (
-            <div className="read-switch" role="tablist" aria-label="Persona read">
+            <div className="read-switch" role="tablist" aria-label="Perspective version">
               <button
                 type="button"
                 role="tab"
                 aria-selected={read === "first"}
                 onClick={() => setRead("first")}
               >
-                First impression
+                Initial view
               </button>
               <button
                 type="button"
@@ -114,7 +114,7 @@ export function PersonaDrawer({
                 aria-selected={read === "strengthened"}
                 onClick={() => setRead("strengthened")}
               >
-                Strengthened
+                Second view
               </button>
             </div>
           )}
@@ -122,10 +122,8 @@ export function PersonaDrawer({
           <div className="biaschip">
             <span className="biaschip__tag">
               {read === "strengthened"
-                ? "BIAS AFTER ROOM READ"
-                : context === "today"
-                  ? "BIAS TODAY"
-                  : "BIAS IN THIS READ"}
+                ? "BIAS IN SECOND VIEW"
+                : "BIAS IN INITIAL VIEW"}
             </span>
             {displayedPov.activeBias}
           </div>
@@ -134,15 +132,15 @@ export function PersonaDrawer({
 
           <div className="pov-meta">
             <span>{words} WORDS</span>
-            <span>ONE LENS · NOT ADVICE</span>
+            <span>ONE PERSPECTIVE · NOT ADVICE</span>
           </div>
 
           <p className="lens-note">
-            {def.name} is a fixed, deliberately biased archetype. Its take
-            reflects that bias on purpose — it is one way of reading {context}, to
-            be compared against the others, never followed as a recommendation.
+            {def.name} is a fixed, deliberately biased market perspective. Its
+            take reflects that bias on purpose — it is one way of reading {context},
+            to be compared with the others, never followed as a recommendation.
             {read === "strengthened" &&
-              " This second read was written independently after reviewing the other first impressions; it is not a group consensus."}
+              " This second view was written independently after reviewing the other initial views; it is not a group consensus."}
           </p>
 
           <button
@@ -150,21 +148,21 @@ export function PersonaDrawer({
             onClick={() => setShowDef((s) => !s)}
             aria-expanded={showDef}
           >
-            <span>Full persona definition</span>
+            <span>About this perspective</span>
             <span className="mono">{showDef ? "−" : "+"}</span>
           </button>
 
           <div className={`def${showDef ? " def--open" : ""}`}>
             <div className="def__inner">
               <div className="def__grid">
-                <Row k="Worldview" v={def.worldview} />
+                <Row k="Core belief" v={def.worldview} />
                 <Row
-                  k="Named biases"
+                  k="Built-in biases"
                   tags={def.biases}
                 />
-                <Row k="Over-weights" tags={def.overweights} />
-                <Row k="Under-weights" tags={def.underweights} />
-                <Row k="Voice" v={def.voice} />
+                <Row k="Pays more attention to" tags={def.overweights} />
+                <Row k="Pays less attention to" tags={def.underweights} />
+                <Row k="Writing style" v={def.voice} />
               </div>
             </div>
           </div>

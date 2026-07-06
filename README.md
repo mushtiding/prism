@@ -1,19 +1,18 @@
 # Prism
 
-> One neutral beam of news, refracted into a spectrum of biased lenses.
+> See where market views split.
 
-Prism is a once-daily market app built on a single idea: **the disagreement
-between viewpoints is the signal.** It stacks two layers on the same facts:
+Prism is a daily market app that shows where deliberately biased perspectives
+agree and disagree on the same evidence. It stacks two layers on the same facts:
 
 1. **The neutral base layer** — a flat, source-attributed account of what moved
    markets on the previous trading day.
-2. **The persona layer** — a fixed cast of five investor archetypes, each a
-   distinct and deliberately *biased* lens, reacting to that base layer in
+2. **The perspective layer** — a fixed cast of five investor archetypes, each a
+   distinct and deliberately *biased* view, reacting to that base layer in
    character.
 
-When the lenses converge, the read is probably efficient and uninteresting.
-When they diverge sharply, that's the thing to surface. Prism computes a
-**divergence signal** (per day and per key point) as its headline output.
+Prism calculates a deterministic **disagreement score** for each brief and
+market driver so readers can quickly find where the perspectives split.
 
 See [`SPEC.md`](./SPEC.md) for the functional spec and
 [`docs/superpowers/specs/`](./docs/superpowers/specs/) for the implementation
@@ -77,15 +76,16 @@ npm -w server run build:data   # regenerate bundled sample and archived fixtures
 
 ## What's built
 
-The app has three workspaces: **Today** generates the current daily briefing,
-**Your Moves** analyzes up to five user-provided finance articles, and
-**History** reads prior daily briefings only when they already exist in the
-generated cache. History never backfills or generates an earlier date.
+The app has three workspaces: **Today** shows the current daily brief,
+**Your Brief** analyzes up to five user-provided finance articles, and the
+**Archive** opens saved daily briefs. The Archive never backfills or generates
+an earlier date.
 
 ## Compliance
 
-Every persona take is **one lens — an opinion, not investment advice.** Prism is
-not personalized and never instructs the user to buy, sell, or hold. A
+Every character provides **one deliberately biased perspective, not investment
+advice.** Prism is not personalized and never instructs the user to buy, sell,
+or hold. A
 persistent disclaimer is shown across the app, and a guardrail blocks concrete
 buy/sell/hold instructions in generated content. Legal review is required before
 any real launch.

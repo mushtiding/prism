@@ -48,10 +48,10 @@ export function divergenceBlurb(
 ): string {
   switch (level) {
     case "consensus":
-      return "The lenses broadly agree. A read this aligned is probably already priced in — and less interesting.";
+      return "The perspectives broadly agree. A view this aligned may already be reflected in prices.";
     case "mixed":
-      return "The lenses partly disagree. Some events are contested; scan the key points for where they split.";
+      return "The perspectives partly disagree. Review the market drivers to see where they split.";
     case "contested":
-      return "The lenses sharply disagree. This is the signal — a contested, possibly-mispriced read worth a closer look.";
+      return "The perspectives sharply disagree. Review the market drivers to understand the divide.";
   }
 }

@@ -94,7 +94,7 @@ router.post(
       );
     } catch (err) {
       if (err instanceof PersonaRetryTimeoutError) {
-        res.status(504).json({ error: "room read persona retry timed out" });
+        res.status(504).json({ error: "The second view timed out. Try again." });
         return;
       }
       if (err instanceof RoomReadUnavailableError) {
@@ -148,7 +148,7 @@ router.post("/my-lens/analyze", (req, res) => {
     return;
   }
   if (!config.openRouterApiKey) {
-    res.status(503).json({ error: "Your Moves requires an OpenRouter API key." });
+    res.status(503).json({ error: "Your Brief requires an OpenRouter API key." });
     return;
   }
 
@@ -160,7 +160,7 @@ router.post("/my-lens/analyze", (req, res) => {
 router.get("/my-lens/jobs/:jobId", (req, res) => {
   const job = getMyLensJob(req.params.jobId);
   if (!job) {
-    res.status(404).json({ error: "Analysis job not found or expired." });
+    res.status(404).json({ error: "Brief request not found or expired." });
     return;
   }
   res.json(job);

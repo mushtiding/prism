@@ -18,15 +18,15 @@ const jobs = new Map<string, MyLensJobStatus>();
 function publicError(err: unknown): string {
   const message = err instanceof Error ? err.message : String(err);
   if (/(?:\b429\b|rate limit|free-models-per-)/i.test(message)) {
-    return "The active model is rate-limited right now. The article was read, but the persona lenses could not finish. Try again later.";
+    return "The service is busy right now. Your article was read, but the perspectives could not finish. Try again later.";
   }
   if (/timed out/i.test(message)) {
-    return "The active model did not respond in time. The article was read; try the persona analysis again.";
+    return "The perspectives did not finish in time. Your article is still saved; try creating the brief again.";
   }
   if (/personas succeeded/i.test(message)) {
-    return "Too few persona lenses returned valid responses. Please try again.";
+    return "Too few perspectives were ready to create a brief. Please try again.";
   }
-  return "The analysis could not finish. Please try again.";
+  return "Your brief could not be created. Please try again.";
 }
 
 function pruneJobs(now = Date.now()): void {
@@ -64,7 +64,7 @@ export function startMyLensJob(
   const job: MyLensJobStatus = {
     jobId,
     status: "running",
-    progress: { phase: "queued", message: "Starting analysis" },
+    progress: { phase: "queued", message: "Starting your brief" },
     startedAt,
     updatedAt: startedAt,
   };
@@ -79,7 +79,7 @@ export function startMyLensJob(
     .then((result) => {
       updateJob(jobId, {
         status: "complete",
-        progress: { phase: "complete", message: "Analysis complete" },
+        progress: { phase: "complete", message: "Your brief is ready" },
         result,
       });
     })
@@ -91,7 +91,7 @@ export function startMyLensJob(
       logEvent(`your moves job ${jobId} failed: ${error}`);
       updateJob(jobId, {
         status: "failed",
-        progress: { phase: "failed", message: "Analysis unavailable" },
+        progress: { phase: "failed", message: "Brief unavailable" },
         result,
         error,
       });

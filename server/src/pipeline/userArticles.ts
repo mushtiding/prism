@@ -379,7 +379,7 @@ export async function prepareMyLensArticles(
           };
       onProgress?.({
         phase: "validating",
-        message: `Checking finance relevance · article ${index + 1} of ${inputs.length}`,
+        message: `Checking market relevance · article ${index + 1} of ${inputs.length}`,
         completed: index,
         total: inputs.length,
       });
@@ -462,7 +462,7 @@ export async function analyzeMyLensArticles(
     );
     onProgress?.({
       phase: "scoring",
-      message: "Reusing unchanged article analysis",
+      message: "Using your saved brief",
     });
     return { articles: prepared.results, day: cached };
   }
@@ -473,14 +473,14 @@ export async function analyzeMyLensArticles(
   );
   onProgress?.({
     phase: "summarizing",
-    message: `Writing neutral summar${validCount === 1 ? "y" : "ies"}`,
+    message: `Summarizing ${validCount} article${validCount === 1 ? "" : "s"}`,
     completed: 0,
     total: validCount,
   });
   const keyPoints = await synthesizeArticleKeyPoints(llm, prepared.keyPoints);
   onProgress?.({
     phase: "summarizing",
-    message: `Neutral summar${validCount === 1 ? "y" : "ies"} ready`,
+    message: `Article summar${validCount === 1 ? "y" : "ies"} ready`,
     completed: validCount,
     total: validCount,
   });
@@ -495,7 +495,7 @@ export async function analyzeMyLensArticles(
       onProgress: (completed, total) =>
         onProgress?.({
           phase: "personas",
-          message: `Refracting through personas · ${completed} of ${total} complete`,
+          message: `Gathering perspectives · ${completed} of ${total} ready`,
           completed,
           total,
         }),
@@ -509,13 +509,13 @@ export async function analyzeMyLensArticles(
   }
   onProgress?.({
     phase: "scoring",
-    message: "Computing divergence",
+    message: "Calculating disagreement score",
   });
   const day: DayContent = {
     date: nowIso.slice(0, 10),
     kind: "myLens",
     source: "live",
-    title: "Your Moves",
+    title: "Your Brief",
     keyPoints: withKeyPointDivergence(keyPoints, povs),
     povs,
     dayDivergence: computeDayDivergence(povs),

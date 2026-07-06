@@ -69,7 +69,9 @@ function loadStoredState(): StoredMyLensState {
         ) as Record<string, MyLensArticleResult>)
       : {};
     const day =
-      currentVersion && parsed?.day?.kind === "myLens" ? parsed.day : null;
+      currentVersion && parsed?.day?.kind === "myLens"
+        ? { ...parsed.day, title: "Your Brief" }
+        : null;
     return {
       version: STORAGE_VERSION,
       drafts,
@@ -94,6 +96,14 @@ function nextDraftNumber(drafts: DraftArticle[]): number {
 
 function looksLikeUrl(value: string): boolean {
   return /^(?:https?:\/\/|www\.)/i.test(value.trim());
+}
+
+function articleStatusLabel(
+  status: MyLensArticleResult["status"] | undefined,
+): string {
+  if (status === "valid") return "Included";
+  if (status === "invalid") return "Not included";
+  return "Added";
 }
 
 function sameArticleIds(left: string[], right: string[]): boolean {
@@ -181,7 +191,7 @@ export function MyLensView({
 
     setLoading(true);
     setError(null);
-    setProgress({ phase: "queued", message: "Starting analysis" });
+    setProgress({ phase: "queued", message: "Starting your brief" });
     setElapsedSeconds(0);
     try {
       const { jobId } = await api.startMyLensAnalysis(articles);
@@ -238,13 +248,13 @@ export function MyLensView({
     <>
       <section className="my-lens">
         <div className="section-label">
-          Your moves · {drafts.length} / {MAX_ARTICLES}
+          Your brief · {drafts.length} of {MAX_ARTICLES} articles
         </div>
 
         <div className="article-composer">
           <div className="article-composer__head">
-            <label htmlFor="your-moves-input">Add a finance article</label>
-            <span className="mono">URL or text</span>
+            <label htmlFor="your-moves-input">Add an article</label>
+            <span className="mono">URL or article text</span>
           </div>
           <textarea
             id="your-moves-input"
@@ -255,8 +265,8 @@ export function MyLensView({
             }}
             placeholder={
               atLimit
-                ? "Remove an article below to add another"
-                : "Paste an article URL or its text"
+                ? "Remove an article to add another"
+                : "Paste a finance article URL or its text"
             }
             rows={2}
             disabled={loading || atLimit}
@@ -264,8 +274,8 @@ export function MyLensView({
           <div className="article-composer__foot">
             <span className="article-composer__count mono">
               {inputIsUrl
-                ? "First 1,500 article chars analyzed"
-                : `${inputChars.toLocaleString()} / 1,500 chars${inputValue.length > ARTICLE_CHAR_LIMIT ? " · truncated" : ""}`}
+                ? "First 1,500 article characters will be used"
+                : `${inputChars.toLocaleString()} / 1,500 characters${inputValue.length > ARTICLE_CHAR_LIMIT ? " · extra text omitted" : ""}`}
             </span>
             <button
               className="article-composer__add"
@@ -274,7 +284,7 @@ export function MyLensView({
               disabled={!inputValue.trim() || loading || atLimit}
             >
               <Plus size={15} strokeWidth={2} aria-hidden="true" />
-              Add to list
+              Add article
             </button>
           </div>
         </div>
@@ -282,9 +292,9 @@ export function MyLensView({
         {drafts.length > 0 && (
           <div className="article-list">
             <div className="article-list__head">
-              <span>Article list</span>
+              <span>Selected articles</span>
               <span className="mono">
-                {MAX_ARTICLES - drafts.length} slot{MAX_ARTICLES - drafts.length === 1 ? "" : "s"} left
+                {MAX_ARTICLES - drafts.length} space{MAX_ARTICLES - drafts.length === 1 ? "" : "s"} left
               </span>
             </div>
           {drafts.map((draft, index) => {
@@ -304,7 +314,7 @@ export function MyLensView({
                 <span
                   className={`article-list__status article-list__status--${result?.status ?? "queued"}`}
                 >
-                  {result?.status ?? "queued"}
+                  {articleStatusLabel(result?.status)}
                 </span>
                 <button
                   className="article-list__remove"
@@ -327,7 +337,7 @@ export function MyLensView({
           <span className="my-lens__queue-note">
             {readyCount === 0
               ? "Add up to five finance articles."
-              : `${readyCount} article${readyCount === 1 ? "" : "s"} ready.`}
+              : `${readyCount} article${readyCount === 1 ? "" : "s"} selected.`}
           </span>
           <button
             className="my-lens__analyze"
@@ -335,11 +345,7 @@ export function MyLensView({
             onClick={() => void analyze()}
             disabled={readyCount === 0 || loading}
           >
-            {loading
-              ? "Analyzing..."
-              : readyCount === 0
-                ? "Analyze moves"
-                : `Analyze ${readyCount} article${readyCount === 1 ? "" : "s"}`}
+            {loading ? "Creating brief..." : "Create brief"}
           </button>
         </div>
         {loading && progress && (
@@ -361,10 +367,16 @@ export function MyLensView({
           <Hero day={day} />
           <section className="keypoints">
             <div className="section-label">
-              Your moves · {day.keyPoints.length} analyzed
+              Your brief · {day.keyPoints.length} article
+              {day.keyPoints.length === 1 ? "" : "s"} included
             </div>
-            {day.keyPoints.map((keyPoint) => (
-              <KeyPointCard key={keyPoint.id} keyPoint={keyPoint} povs={day.povs} />
+            {day.keyPoints.map((keyPoint, index) => (
+              <KeyPointCard
+                key={keyPoint.id}
+                index={index}
+                keyPoint={keyPoint}
+                povs={day.povs}
+              />
             ))}
           </section>
           <CastStrip day={day} defs={defs} onPick={onPick} />

@@ -572,7 +572,7 @@ describe("generateDay", () => {
   it("publishes after persona quorum when remaining model calls hang", async () => {
     vi.useFakeTimers();
     try {
-      const hanging = new Set(["Macro / risk manager", "Contrarian"]);
+      const hanging = new Set(["Macro risk manager", "Contrarian"]);
       const llm = makeLlm((name) =>
         hanging.has(name) ? new Promise<string>(() => undefined) : validPov(),
       );
