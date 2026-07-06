@@ -1,8 +1,11 @@
 import { useEffect, useRef, useState } from "react";
 import {
   ArrowRight,
+  Archive as ArchiveIcon,
   ChevronLeft,
   ChevronRight,
+  FileText,
+  Home,
   Moon,
   RefreshCw,
   SlidersHorizontal,
@@ -116,6 +119,10 @@ export default function App() {
     const timer = window.setInterval(updateElapsed, 1_000);
     return () => window.clearInterval(timer);
   }, [roomReadStartedAt]);
+
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, [view]);
 
   const current =
     view === "history" && historyDay
@@ -740,14 +747,16 @@ function Shell({
                 onClick={() => setView("today")}
                 aria-current={view === "today" ? "page" : undefined}
               >
-                Today
+                <Home className="nav-btn__icon" size={19} strokeWidth={1.8} aria-hidden="true" />
+                <span>Today</span>
               </button>
               <button
                 className={`nav-btn${view === "myLens" ? " nav-btn--active" : ""}`}
                 onClick={() => setView("myLens")}
                 aria-current={view === "myLens" ? "page" : undefined}
               >
-                Your Brief
+                <FileText className="nav-btn__icon" size={19} strokeWidth={1.8} aria-hidden="true" />
+                <span>Your Brief</span>
               </button>
               <button
                 className={`nav-btn${
@@ -756,7 +765,8 @@ function Shell({
                 onClick={() => setView("history")}
                 aria-current={view === "history" ? "page" : undefined}
               >
-                Archive
+                <ArchiveIcon className="nav-btn__icon" size={19} strokeWidth={1.8} aria-hidden="true" />
+                <span>Archive</span>
               </button>
             </nav>
             {health && (
@@ -836,6 +846,7 @@ function SettingsMenu() {
         title="Settings"
       >
         <SlidersHorizontal size={17} strokeWidth={1.8} aria-hidden="true" />
+        <span className="settings__mobile-label">Settings</span>
       </button>
       <div
         className="settings__panel"
