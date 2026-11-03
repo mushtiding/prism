@@ -14,6 +14,8 @@ agree and disagree on the same evidence. It stacks two layers on the same facts:
 Prism calculates a deterministic **disagreement score** for each brief and
 market driver so readers can quickly find where the perspectives split.
 
+> **Project note:** Prism was vibe coded using Codex agents.
+
 ## Preview
 
 [Open the public demo](https://mushtiding.github.io/prism/) — a read-only build
