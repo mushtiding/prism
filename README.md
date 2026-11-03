@@ -16,7 +16,7 @@ market driver so readers can quickly find where the perspectives split.
 
 ## Preview
 
-[Open the public demo](https://mushtidig.github.io/prism/) — a read-only build
+[Open the public demo](https://mushtiding.github.io/prism/) — a read-only build
 using bundled sample data.
 
 ![Prism market briefing interface](./docs/assets/prism-preview.png)
