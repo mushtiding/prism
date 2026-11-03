@@ -9,6 +9,7 @@ const allowedHosts = (process.env.PRISM_ALLOWED_HOSTS || "")
 
 // Frontend dev server proxies /api to the Prism backend.
 export default defineConfig({
+  base: process.env.VITE_BASE_PATH || "/",
   plugins: [react()],
   server: {
     host: "0.0.0.0",

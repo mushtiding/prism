@@ -730,7 +730,7 @@ function Shell({
           <div className="wordmark">
             <img
               className="wordmark__icon"
-              src="/prism-icon.svg"
+              src={`${import.meta.env.BASE_URL}prism-icon.svg`}
               alt=""
               width="38"
               height="38"
