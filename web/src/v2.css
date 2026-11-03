@@ -910,6 +910,18 @@ textarea {
   border-color: var(--v2-line);
 }
 
+.project-credit {
+  margin: var(--s4) 0 var(--s8);
+  color: var(--v2-faint);
+  font-family: var(--font-mono);
+  font-size: 0.6875rem;
+  letter-spacing: 0.08em;
+  line-height: 1.5;
+  text-align: center;
+  text-wrap: pretty;
+  text-transform: uppercase;
+}
+
 .center-state {
   min-height: 62vh;
   color: var(--v2-muted);

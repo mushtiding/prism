@@ -289,6 +289,9 @@ export default function App() {
       </div>
 
       <p className="disclaimer">{DISCLAIMER}</p>
+      <footer className="project-credit">
+        This project was vibe coded using Codex agents.
+      </footer>
 
       {activeDef && activePov && (
         <PersonaDrawer
