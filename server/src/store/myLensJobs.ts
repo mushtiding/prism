@@ -18,7 +18,7 @@ const jobs = new Map<string, MyLensJobStatus>();
 function publicError(err: unknown): string {
   const message = err instanceof Error ? err.message : String(err);
   if (/(?:\b429\b|rate limit|free-models-per-)/i.test(message)) {
-    return "The service is busy right now. Your article was read, but the perspectives could not finish. Try again later.";
+    return "The service is temporarily rate-limited. Your article was read, but the perspectives could not finish. Try again later.";
   }
   if (/timed out/i.test(message)) {
     return "The perspectives did not finish in time. Your article is still saved; try creating the brief again.";

@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import {
   DISCLAIMER,
   type DayContent,
@@ -34,6 +35,12 @@ import {
   buildRoomReadSystem,
   buildRoomReadUser,
 } from "./prompts.js";
+import {
+  recordPersonaAttempt,
+  recordPersonaOutput,
+} from "../evaluation/storage.js";
+import { queueQualityEvaluation } from "../evaluation/judge.js";
+import type { EvaluationRunContext } from "../evaluation/types.js";
 
 // Minimum personas that must succeed for a day to be publishable. Below this
 // the divergence signal is too thin to be meaningful, so we fall back to sample.
@@ -99,6 +106,37 @@ function wait(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
+function failureClass(message: string): string {
+  if (/rate limit|\b429\b/i.test(message)) return "provider_rate_limit";
+  if (/no endpoints|\b404\b|model unavailable/i.test(message)) {
+    return "provider_unavailable";
+  }
+  if (/timed out/i.test(message)) return "provider_timeout";
+  if (/network|socket|ECONN|fetch failed/i.test(message)) return "network_error";
+  if (/json/i.test(message)) return "malformed_json";
+  return "unknown";
+}
+
+function guardrailCodes(violations: string[]): string[] {
+  return [
+    ...new Set(
+      violations.map((violation) => {
+        if (/advice pattern/i.test(violation)) return "advice_violation";
+        if (/missing stance/i.test(violation)) return "stance_missing";
+        if (/duplicate stance/i.test(violation)) return "stance_duplicate";
+        if (/unknown key point/i.test(violation)) return "grounding_failure";
+        if (/label.*score|score.*label/i.test(violation)) {
+          return "label_score_conflict";
+        }
+        if (/active bias/i.test(violation)) return "active_bias_missing";
+        if (/repeats the first/i.test(violation)) return "duplicate_second_view";
+        if (/word|empty|short/i.test(violation)) return "readability";
+        return "guardrail_failure";
+      }),
+    ),
+  ];
+}
+
 type SettledPov =
   | { index: number; status: "fulfilled"; value: PersonaPOV }
   | { index: number; status: "rejected"; reason: unknown };
@@ -142,13 +180,18 @@ async function generateStructuredPov(
   systemPrompt: string,
   userMsg: string,
   labelPrefix: string,
-  rejectDuplicateOf?: string,
+  evaluationRun?: EvaluationRunContext,
+  firstPov?: PersonaPOV,
 ): Promise<PersonaPOV> {
   const persona = PERSONA_LIST[personaIndex];
   const validIds = keyPoints.map((kp) => kp.id);
   let lastErr = "";
+  const personaStarted = performance.now();
 
   for (let attempt = 0; attempt < MAX_POV_ATTEMPTS; attempt++) {
+    const promptAttemptId = randomUUID();
+    const attemptStartedAt = new Date().toISOString();
+    const attemptStarted = performance.now();
     const sys =
       attempt === 0
         ? systemPrompt
@@ -167,10 +210,33 @@ Return the complete corrected JSON object now. Keep text under 120 words and eac
           maxTokens: 1400,
           label: `${labelPrefix} attempt ${attempt + 1}`,
           responseFormat: POV_RESPONSE_FORMAT,
+          telemetry: evaluationRun
+            ? {
+                runId: evaluationRun.runId,
+                promptAttemptId,
+                personaId: persona.id,
+                stage: evaluationRun.stage,
+                promptAttempt: attempt + 1,
+                interactiveRetryOrdinal:
+                  evaluationRun.interactiveRetryOrdinal,
+              }
+            : undefined,
         },
       );
     } catch (err) {
       lastErr = `model request failed: ${err instanceof Error ? err.message : String(err)}`;
+      if (evaluationRun) {
+        recordPersonaAttempt({
+          attemptId: promptAttemptId,
+          run: evaluationRun,
+          personaId: persona.id,
+          promptAttempt: attempt + 1,
+          startedAt: attemptStartedAt,
+          latencyMs: performance.now() - attemptStarted,
+          outcome: "failed",
+          failureClass: failureClass(lastErr),
+        });
+      }
       if (
         err instanceof LlmRateLimitError ||
         err instanceof LlmModelUnavailableError
@@ -195,6 +261,20 @@ Return the complete corrected JSON object now. Keep text under 120 words and eac
       logEvent(
         `${persona.name} attempt ${attempt + 1} rejected: ${lastErr}; ${rawHint(raw)}`,
       );
+      if (evaluationRun) {
+        recordPersonaAttempt({
+          attemptId: promptAttemptId,
+          run: evaluationRun,
+          personaId: persona.id,
+          promptAttempt: attempt + 1,
+          startedAt: attemptStartedAt,
+          latencyMs: performance.now() - attemptStarted,
+          outcome: "rejected",
+          failureClass: "malformed_json",
+          guardrailCodes: ["malformed_json"],
+          responseChars: raw.length,
+        });
+      }
       continue;
     }
 
@@ -213,27 +293,47 @@ Return the complete corrected JSON object now. Keep text under 120 words and eac
     );
 
     const readability = checkReadability(text);
-    const advice = checkNoAdvice(text);
+    const advice = checkNoAdvice(
+      [text, ...stances.map((stance) => stance.rationale ?? "")].join(" "),
+    );
     const grounding = checkGrounding(
       stances.map((s) => s.keyPointId),
       validIds,
     );
     const duplicateViolation =
-      rejectDuplicateOf && samePovText(text, rejectDuplicateOf)
+      firstPov && samePovText(text, firstPov.text)
         ? ["strengthened POV repeats the first impression"]
         : [];
+    const labelScoreViolations = stances.flatMap((stance) => {
+      const validLabel = ["bullish", "neutral", "bearish"].includes(
+        stance.label,
+      );
+      const consistent =
+        (stance.score < 0 && stance.label === "bearish") ||
+        (stance.score === 0 && stance.label === "neutral") ||
+        (stance.score > 0 && stance.label === "bullish");
+      return validLabel && consistent
+        ? []
+        : [`stance ${stance.keyPointId} label and score are inconsistent`];
+    });
+    const activeBiasViolations =
+      typeof parsed.activeBias === "string" && parsed.activeBias.trim()
+        ? []
+        : ["active bias is missing"];
     const violations = [
       ...readability.violations,
       ...advice.violations,
       ...grounding.violations,
       ...duplicateViolation,
+      ...labelScoreViolations,
+      ...activeBiasViolations,
     ];
 
     if (violations.length === 0) {
       logEvent(
         `${persona.name} attempt ${attempt + 1} accepted: ${countWords(text)} words, ${stances.length}/${validIds.length} stances`,
       );
-      return {
+      const pov: PersonaPOV = {
         personaId: persona.id,
         text: text.trim(),
         activeBias:
@@ -242,11 +342,56 @@ Return the complete corrected JSON object now. Keep text under 120 words and eac
             : persona.biases[0],
         stances,
       };
+      if (evaluationRun) {
+        recordPersonaAttempt({
+          attemptId: promptAttemptId,
+          run: evaluationRun,
+          personaId: persona.id,
+          promptAttempt: attempt + 1,
+          startedAt: attemptStartedAt,
+          latencyMs: performance.now() - attemptStarted,
+          outcome: "accepted",
+          responseChars: raw.length,
+        });
+        const outputId = recordPersonaOutput({
+          run: evaluationRun,
+          persona,
+          pov,
+          keyPoints,
+          personaLatencyMs: performance.now() - personaStarted,
+          firstPov,
+          retainText: evaluationRun.workflow !== "my_lens",
+        });
+        queueQualityEvaluation({
+          runId: evaluationRun.runId,
+          outputId,
+          persona,
+          keyPoints,
+          pov,
+          stage: evaluationRun.stage,
+          firstPov,
+        });
+      }
+      return pov;
     }
     lastErr = formatReasons(violations);
     logEvent(
       `${persona.name} attempt ${attempt + 1} rejected: ${lastErr}; ${countWords(text)} words, ${stances.length}/${validIds.length} stances; ${rawHint(raw)}`,
     );
+    if (evaluationRun) {
+      recordPersonaAttempt({
+        attemptId: promptAttemptId,
+        run: evaluationRun,
+        personaId: persona.id,
+        promptAttempt: attempt + 1,
+        startedAt: attemptStartedAt,
+        latencyMs: performance.now() - attemptStarted,
+        outcome: "rejected",
+        failureClass: "guardrail_failure",
+        guardrailCodes: guardrailCodes(violations),
+        responseChars: raw.length,
+      });
+    }
   }
   throw new Error(`${persona.name} POV failed guardrails: ${lastErr}`);
 }
@@ -256,6 +401,7 @@ async function generatePov(
   personaIndex: number,
   keyPoints: KeyPoint[],
   briefingLabel?: string,
+  evaluationRun?: EvaluationRunContext,
 ): Promise<PersonaPOV> {
   const persona = PERSONA_LIST[personaIndex];
   return generateStructuredPov(
@@ -265,6 +411,7 @@ async function generatePov(
     buildPovSystem(persona),
     buildPovUser(keyPoints, briefingLabel),
     persona.name,
+    evaluationRun,
   );
 }
 
@@ -273,6 +420,7 @@ async function generateRoomReadPov(
   personaIndex: number,
   keyPoints: KeyPoint[],
   firstPovs: PersonaPOV[],
+  evaluationRun?: EvaluationRunContext,
 ): Promise<PersonaPOV> {
   const persona = PERSONA_LIST[personaIndex];
   const firstPov = firstPovs.find((pov) => pov.personaId === persona.id);
@@ -286,7 +434,8 @@ async function generateRoomReadPov(
     buildRoomReadSystem(persona),
     buildRoomReadUser(persona, keyPoints, firstPovs),
     `${persona.name} room read`,
-    firstPov.text,
+    evaluationRun,
+    firstPov,
   );
 }
 
@@ -307,24 +456,32 @@ export function generateRoomReadPersonaPov(
   personaId: PersonaId,
   keyPoints: KeyPoint[],
   firstPovs: PersonaPOV[],
+  evaluationRun?: EvaluationRunContext,
 ): Promise<PersonaPOV> {
   const personaIndex = PERSONA_LIST.findIndex((persona) => persona.id === personaId);
   if (personaIndex === -1) {
     return Promise.reject(new Error(`Unknown persona: ${personaId}`));
   }
-  return generateRoomReadPov(llm, personaIndex, keyPoints, firstPovs);
+  return generateRoomReadPov(
+    llm,
+    personaIndex,
+    keyPoints,
+    firstPovs,
+    evaluationRun,
+  );
 }
 
 export function generatePersonaPov(
   llm: LlmClient,
   personaId: PersonaId,
   keyPoints: KeyPoint[],
+  evaluationRun?: EvaluationRunContext,
 ): Promise<PersonaPOV> {
   const personaIndex = PERSONA_LIST.findIndex((persona) => persona.id === personaId);
   if (personaIndex === -1) {
     return Promise.reject(new Error(`Unknown persona: ${personaId}`));
   }
-  return generatePov(llm, personaIndex, keyPoints);
+  return generatePov(llm, personaIndex, keyPoints, undefined, evaluationRun);
 }
 
 export function mergePersonaPov(
@@ -353,6 +510,7 @@ export async function generatePersonaPovs(
     briefingLabel?: string;
     quorumGraceMs?: number;
     onProgress?: (completed: number, total: number) => void;
+    evaluationRun?: EvaluationRunContext;
   } = {},
 ): Promise<PersonaPOV[]> {
   const quorumGraceMs = options.quorumGraceMs ?? PERSONA_QUORUM_GRACE_MS;
@@ -364,7 +522,16 @@ export async function generatePersonaPovs(
   for (let i = 0; i < PERSONA_LIST.length; i++) {
     pending.set(
       i,
-      settlePov(i, generatePov(llm, i, keyPoints, options.briefingLabel)),
+      settlePov(
+        i,
+        generatePov(
+          llm,
+          i,
+          keyPoints,
+          options.briefingLabel,
+          options.evaluationRun,
+        ),
+      ),
     );
   }
   options.onProgress?.(0, PERSONA_LIST.length);
@@ -474,8 +641,8 @@ function roomReadBriefing(
 
   return [
     focus
-      ? `After comparing perspectives, the strongest split centered on ${focus.summary}`
-      : "After comparing perspectives, each available lens refined its independent case.",
+      ? `After reading the room, the strongest split centered on ${focus.summary}`
+      : "After reading the room, each available lens refined its independent case.",
     sides.length > 0
       ? `${sides.join(", while ")}.`
       : "The second views stayed close to neutral.",
@@ -555,6 +722,7 @@ export async function generateRoomRead(
   firstPovs: PersonaPOV[],
   generatedAt: string,
   quorumGraceMs = PERSONA_QUORUM_GRACE_MS,
+  evaluationRun?: EvaluationRunContext,
 ): Promise<RoomRead> {
   const personaIndexes = PERSONA_LIST.flatMap((persona, index) =>
     firstPovs.some((pov) => pov.personaId === persona.id) ? [index] : [],
@@ -571,7 +739,16 @@ export async function generateRoomRead(
   for (const index of personaIndexes) {
     pending.set(
       index,
-      settlePov(index, generateRoomReadPov(llm, index, keyPoints, firstPovs)),
+      settlePov(
+        index,
+        generateRoomReadPov(
+          llm,
+          index,
+          keyPoints,
+          firstPovs,
+          evaluationRun,
+        ),
+      ),
     );
   }
 
@@ -635,6 +812,7 @@ export async function generateDay(
   market: MarketDataProvider,
   nowIso: string,
   displayDate?: string,
+  evaluationRun?: EvaluationRunContext,
 ): Promise<DayContent> {
   try {
     setPipeline("market data", "market snapshot");
@@ -649,7 +827,9 @@ export async function generateDay(
     setPipeline("persona POVs", "5 parallel OpenRouter calls");
     let povs: PersonaPOV[];
     try {
-      povs = await generatePersonaPovs(llm, briefingKeyPoints);
+      povs = await generatePersonaPovs(llm, briefingKeyPoints, {
+        evaluationRun,
+      });
     } catch (err) {
       if (!(err instanceof PersonaQuorumError)) throw err;
       povs = err.povs;

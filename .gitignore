@@ -3,6 +3,8 @@ dist/
 .env
 .env.local
 server/cache/
+server/data/evaluation/
+server/data/automatic-briefs/
 *.log
 .DS_Store
 

@@ -25,6 +25,14 @@ import {
   sanitizeRoomRead,
 } from "../pipeline/generate.js";
 import { loadSampleDay } from "./sampleData.js";
+import { PERSONA_LIST } from "../domain/personas.js";
+import {
+  briefIdentity,
+  finishEvaluationRun,
+  nextInteractiveRetryOrdinal,
+  personaDefinitionVersion,
+  startEvaluationRun,
+} from "../evaluation/storage.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const CACHE_DIR = path.resolve(__dirname, "../../cache");
@@ -312,18 +320,50 @@ async function generateAndCacheLiveDay(
   date: string,
   now: Date,
   phase: "daily generation" | "daily refresh",
+  evaluationTrigger?: "initial" | "refresh" | "scheduled",
 ): Promise<DayContent> {
   setPipeline(phase, date);
+  const generatedAt = now.toISOString();
+  const run = startEvaluationRun({
+    date,
+    workflow: "daily",
+    trigger:
+      evaluationTrigger ??
+      (phase === "daily generation" ? "initial" : "refresh"),
+    stage: "first_impression",
+    generatedAt,
+    expectedPersonas: PERSONA_LIST.length,
+    personaVersion: personaDefinitionVersion(PERSONA_LIST),
+  });
   const llm = new OpenRouterClient(config.openRouterApiKey!);
   const market = new ArticleSummaryMarketDataProvider(
     new ResilientMarketDataProvider(
       new AlphaVantageProvider(config.alphaVantageApiKey!),
     ),
   );
-  const day = await generateDay(llm, market, now.toISOString(), date);
-  setPipeline("cache write", date);
-  await queueCacheUpdate(date, () => storeGeneratedDay(date, day));
-  return day;
+  try {
+    const day = await generateDay(llm, market, generatedAt, date, run);
+    setPipeline("cache write", date);
+    await queueCacheUpdate(date, () => storeGeneratedDay(date, day));
+    finishEvaluationRun(run, {
+      outcome:
+        day.povs.length === PERSONA_LIST.length ? "published" : "partial",
+      successfulPersonas: day.povs.map((pov) => pov.personaId),
+      expectedPersonaIds: PERSONA_LIST.map((persona) => persona.id),
+      keyPointCount: day.keyPoints.length,
+      published: true,
+    });
+    return day;
+  } catch (err) {
+    finishEvaluationRun(run, {
+      outcome: "failed",
+      successfulPersonas: [],
+      expectedPersonaIds: PERSONA_LIST.map((persona) => persona.id),
+      keyPointCount: 0,
+      failureClass: err instanceof Error ? err.name : "unknown",
+    });
+    throw err;
+  }
 }
 
 /**
@@ -380,7 +420,11 @@ export async function getDay(date: string, now: Date): Promise<DayContent> {
 }
 
 /** Force a fresh briefing, promote it to latest, and retain prior generations. */
-export async function regenerateDay(date: string, now: Date): Promise<DayContent> {
+export async function regenerateDay(
+  date: string,
+  now: Date,
+  options: { trigger?: "refresh" | "scheduled" } = {},
+): Promise<DayContent> {
   if (!isLiveMode()) throw new Error("Briefing refresh requires live mode");
 
   const existing = inFlight.get(date);
@@ -392,7 +436,12 @@ export async function regenerateDay(date: string, now: Date): Promise<DayContent
   const promise = (async (): Promise<DayContent> => {
     try {
       logEvent(`day refresh started · ${date}`);
-      const day = await generateAndCacheLiveDay(date, now, "daily refresh");
+      const day = await generateAndCacheLiveDay(
+        date,
+        now,
+        "daily refresh",
+        options.trigger,
+      );
       recordDayOutcome("live", date, day.source);
       logEvent(`day refresh accepted · ${date} · ${day.keyPoints.length} key points`);
       return day;
@@ -430,17 +479,50 @@ export async function retryMissingPersona(
   }
 
   const request = (async () => {
+    const briefId = briefIdentity("daily", cached.date, cached.generatedAt);
+    const run = startEvaluationRun({
+      date: cached.date,
+      workflow: "daily",
+      trigger: "interactive_retry",
+      stage: "first_impression",
+      generatedAt: new Date().toISOString(),
+      expectedPersonas: 1,
+      personaVersion: personaDefinitionVersion(PERSONA_LIST),
+      briefId,
+      interactiveRetryOrdinal: nextInteractiveRetryOrdinal(
+        briefId,
+        personaId,
+        "first_impression",
+      ),
+      targetPersonaId: personaId,
+    });
     try {
       setPipeline("persona retry", `${personaId} · ${PERSONA_RETRY_TIMEOUT_MS / 1000}s limit`);
       logEvent(`persona retry started · ${personaId} · cached day ${cacheKey}`);
       const llm = new OpenRouterClient(config.openRouterApiKey!);
       const pov = await withPersonaRetryTimeout(
         personaId,
-        generatePersonaPov(llm, personaId, cached.keyPoints),
+        generatePersonaPov(llm, personaId, cached.keyPoints, run),
       );
       const updated = await mergePovIntoCache(cacheKey, pov);
+      finishEvaluationRun(run, {
+        outcome: "published",
+        successfulPersonas: [personaId],
+        expectedPersonaIds: [personaId],
+        keyPointCount: cached.keyPoints.length,
+        published: true,
+      });
       logEvent(`persona retry accepted · ${personaId} · ${updated.povs.length}/5 lenses`);
       return updated;
+    } catch (err) {
+      finishEvaluationRun(run, {
+        outcome: "failed",
+        successfulPersonas: [],
+        expectedPersonaIds: [personaId],
+        keyPointCount: cached.keyPoints.length,
+        failureClass: err instanceof Error ? err.name : "unknown",
+      });
+      throw err;
     } finally {
       clearPipeline();
     }
@@ -479,6 +561,17 @@ export async function revealRoomRead(cacheKey: string): Promise<DayContent> {
   }
 
   const request = (async () => {
+    const briefId = briefIdentity("daily", cached.date, cached.generatedAt);
+    const run = startEvaluationRun({
+      date: cached.date,
+      workflow: "room_read",
+      trigger: "room_read",
+      stage: "second_view",
+      generatedAt: new Date().toISOString(),
+      expectedPersonas: cached.povs.length,
+      personaVersion: personaDefinitionVersion(PERSONA_LIST),
+      briefId,
+    });
     try {
       setPipeline("room read", `${cached.povs.length} parallel second-pass lenses`);
       logEvent(`room read started · ${cacheKey} · ${cached.generatedAt}`);
@@ -490,6 +583,8 @@ export async function revealRoomRead(cacheKey: string): Promise<DayContent> {
           cached.keyPoints,
           cached.povs,
           new Date().toISOString(),
+          undefined,
+          run,
         );
       } catch (err) {
         if (err instanceof RoomReadQuorumError) {
@@ -511,7 +606,28 @@ export async function revealRoomRead(cacheKey: string): Promise<DayContent> {
         await storeGeneratedDay(cacheKey, updated);
       });
       if (!updated) throw new Error(`Failed to update cached day ${cacheKey}`);
+      finishEvaluationRun(run, {
+        outcome:
+          roomRead.strengthenedPovs.length === cached.povs.length
+            ? "published"
+            : "partial",
+        successfulPersonas: roomRead.strengthenedPovs.map(
+          (pov) => pov.personaId,
+        ),
+        expectedPersonaIds: cached.povs.map((pov) => pov.personaId),
+        keyPointCount: cached.keyPoints.length,
+        published: true,
+      });
       return updated;
+    } catch (err) {
+      finishEvaluationRun(run, {
+        outcome: "failed",
+        successfulPersonas: [],
+        expectedPersonaIds: cached.povs.map((pov) => pov.personaId),
+        keyPointCount: cached.keyPoints.length,
+        failureClass: err instanceof Error ? err.name : "unknown",
+      });
+      throw err;
     } finally {
       clearPipeline();
     }
@@ -555,6 +671,23 @@ export async function retryMissingRoomReadPersona(
   }
 
   const request = (async () => {
+    const briefId = briefIdentity("daily", cached.date, cached.generatedAt);
+    const run = startEvaluationRun({
+      date: cached.date,
+      workflow: "room_read",
+      trigger: "interactive_retry",
+      stage: "second_view",
+      generatedAt: new Date().toISOString(),
+      expectedPersonas: 1,
+      personaVersion: personaDefinitionVersion(PERSONA_LIST),
+      briefId,
+      interactiveRetryOrdinal: nextInteractiveRetryOrdinal(
+        briefId,
+        personaId,
+        "second_view",
+      ),
+      targetPersonaId: personaId,
+    });
     try {
       setPipeline(
         "room read retry",
@@ -571,6 +704,7 @@ export async function retryMissingRoomReadPersona(
             personaId,
             cached.keyPoints,
             cached.povs,
+            run,
           ),
         );
       } catch (err) {
@@ -593,8 +727,24 @@ export async function retryMissingRoomReadPersona(
         await storeGeneratedDay(cacheKey, updated);
       });
       if (!updated) throw new Error(`Failed to update cached day ${cacheKey}`);
+      finishEvaluationRun(run, {
+        outcome: "published",
+        successfulPersonas: [personaId],
+        expectedPersonaIds: [personaId],
+        keyPointCount: cached.keyPoints.length,
+        published: true,
+      });
       logEvent(`room read persona retry accepted · ${personaId}`);
       return updated;
+    } catch (err) {
+      finishEvaluationRun(run, {
+        outcome: "failed",
+        successfulPersonas: [],
+        expectedPersonaIds: [personaId],
+        keyPointCount: cached.keyPoints.length,
+        failureClass: err instanceof Error ? err.name : "unknown",
+      });
+      throw err;
     } finally {
       clearPipeline();
     }

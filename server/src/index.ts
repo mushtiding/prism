@@ -4,6 +4,8 @@ import { config, isLiveMode } from "./config.js";
 import { logBootSummary, recordClientUrl, startStatusReporter, trackHttp } from "./logger.js";
 import { router } from "./routes.js";
 import { runStartupChecks } from "./startup.js";
+import { startEvaluationReportScheduler } from "./evaluation/scheduler.js";
+import { startAutomaticBriefScheduler } from "./scheduling/automaticBriefs.js";
 
 const app = express();
 app.use(cors());
@@ -47,6 +49,8 @@ async function main() {
   try {
     await runStartupChecks();
     startStatusReporter();
+    startEvaluationReportScheduler();
+    startAutomaticBriefScheduler();
     logBootSummary(config.port);
   } catch (err) {
     server.close();

@@ -5,6 +5,7 @@ import { config, isLiveMode } from "./config.js";
 import { logEvent } from "./logger.js";
 import { currentCalendarDate } from "./store/dailyStore.js";
 import { loadSampleDay } from "./store/sampleData.js";
+import { evaluationDatabasePath } from "./evaluation/storage.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const CACHE_DIR = path.resolve(__dirname, "../cache");
@@ -50,6 +51,14 @@ export async function runStartupChecks(): Promise<void> {
       : `daily cache · ${cached.join(", ")}`,
   );
   logEvent(`current calendar day · ${currentCalendarDate(new Date())}`);
+  logEvent(
+    `evaluation ledger · ${evaluationDatabasePath()} · judge ${
+      config.evaluationJudgeEnabled ? config.evaluationJudgeModel : "disabled"
+    }`,
+  );
+  logEvent(
+    `automatic brief times · ${config.automaticBriefTimes.join(", ")} local`,
+  );
 
   if (!isLiveMode()) {
     logEvent("live generation disabled — serving bundled sample until both keys are set");

@@ -4,6 +4,8 @@ import { fileURLToPath } from "node:url";
 import OpenAI from "openai";
 import { config } from "../config.js";
 import { logEvent, redactSecrets, trackExternal } from "../logger.js";
+import { recordProviderAttempt } from "../evaluation/storage.js";
+import type { ProviderTelemetryContext } from "../evaluation/types.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const RAW_RESPONSE_LOG = path.resolve(
@@ -32,6 +34,7 @@ export interface LlmGenerateOptions {
   label?: string;
   responseFormat?: LlmResponseFormat;
   temperature?: number;
+  telemetry?: ProviderTelemetryContext;
 }
 
 /**
@@ -69,6 +72,11 @@ function isModelUnavailableMessage(message: string): boolean {
 interface ChatCompletionLike {
   choices?: Array<{ message?: { content?: string | null } }>;
   error?: { message?: string };
+  usage?: {
+    prompt_tokens?: number;
+    completion_tokens?: number;
+    total_tokens?: number;
+  };
 }
 
 function reasoningConfig(): Record<string, unknown> {
@@ -135,8 +143,10 @@ async function extractCompletionText(
 
 export class OpenRouterClient implements LlmClient {
   private client: OpenAI;
+  private models: string[];
 
-  constructor(apiKey: string) {
+  constructor(apiKey: string, options: { models?: string[] } = {}) {
+    this.models = options.models?.length ? options.models : config.openRouterModels;
     this.client = new OpenAI({
       apiKey,
       baseURL: "https://openrouter.ai/api/v1",
@@ -157,7 +167,7 @@ export class OpenRouterClient implements LlmClient {
     const track = trackExternal("OpenRouter", label);
     let timeout: ReturnType<typeof setTimeout> | undefined;
     let heartbeat: ReturnType<typeof setInterval> | undefined;
-    let activeModel = config.openRouterModels[0] ?? config.openRouterModel;
+    let activeModel = this.models[0] ?? config.openRouterModel;
 
     try {
       heartbeat = setInterval(() => {
@@ -167,8 +177,10 @@ export class OpenRouterClient implements LlmClient {
       }, 30_000);
 
       const failures: string[] = [];
-      for (const model of config.openRouterModels) {
+      for (const [modelIndex, model] of this.models.entries()) {
         activeModel = model;
+        const providerStartedAt = new Date().toISOString();
+        const providerStarted = performance.now();
         if (timeout) {
           clearTimeout(timeout);
           timeout = undefined;
@@ -210,12 +222,37 @@ export class OpenRouterClient implements LlmClient {
             timed,
           ])) as ChatCompletionLike;
           const text = await extractCompletionText(completion, label, model);
+          if (opts.telemetry) {
+            recordProviderAttempt({
+              telemetry: opts.telemetry,
+              providerAttempt: modelIndex + 1,
+              model,
+              startedAt: providerStartedAt,
+              latencyMs: performance.now() - providerStarted,
+              outcome: "succeeded",
+              responseChars: text.length,
+              inputTokens: completion.usage?.prompt_tokens,
+              outputTokens: completion.usage?.completion_tokens,
+              totalTokens: completion.usage?.total_tokens,
+            });
+          }
           await appendRawResponseLog({ label, model, text });
           logEvent(`OpenRouter raw response saved: ${RAW_RESPONSE_LOG}`);
           track.done(`${model} · ${text.length} chars`);
           return text;
         } catch (err) {
           const reason = err instanceof Error ? err.message : String(err);
+          if (opts.telemetry) {
+            recordProviderAttempt({
+              telemetry: opts.telemetry,
+              providerAttempt: modelIndex + 1,
+              model,
+              startedAt: providerStartedAt,
+              latencyMs: performance.now() - providerStarted,
+              outcome: "failed",
+              failureClass: classifyProviderFailure(reason),
+            });
+          }
           failures.push(`${model}: ${reason}`);
           logEvent(`OpenRouter model failed for ${label}: ${model} — ${reason}`);
         }
@@ -237,4 +274,13 @@ export class OpenRouterClient implements LlmClient {
       if (heartbeat) clearInterval(heartbeat);
     }
   }
+}
+
+function classifyProviderFailure(message: string): string {
+  if (isRateLimitMessage(message)) return "provider_rate_limit";
+  if (isModelUnavailableMessage(message)) return "provider_unavailable";
+  if (/timed out/i.test(message)) return "provider_timeout";
+  if (/network|socket|ECONN|fetch failed/i.test(message)) return "network_error";
+  if (/missing choices|non-text|empty/i.test(message)) return "empty_response";
+  return "unknown";
 }
